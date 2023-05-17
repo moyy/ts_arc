@@ -1,6 +1,6 @@
 import { BlobArc, glyphy_arc_list_encode_blob2 } from "glyphy/blob.js";
 import { AABB } from "glyphy/geometry/aabb.js";
-import { Arc, ArcEndpoint, create_arc_endpoint } from "glyphy/geometry/arc.js";
+import { Arc, ArcEndpoint } from "glyphy/geometry/arc.js";
 import { GlyphyArcAccumulator } from "glyphy/geometry/arcs";
 import { Point } from "glyphy/geometry/point.js";
 import { glyphy_outline_winding_from_even_odd } from "glyphy/outline.js";
@@ -31,7 +31,8 @@ export const get_char_arc = (
     char: string,
     tolerance_per_em = TOLERANCE
 ): {
-    path_cmds: string[];
+    svg_paths: string[];
+    svg_endpoints: [number, number][];
     arcs: BlobArc;
     endpoints: ArcEndpoint[];
 } => {
@@ -42,7 +43,7 @@ export const get_char_arc = (
     let enlighten_max = upem * ENLIGHTEN_MAX;
     let embolden_max = upem * EMBOLDEN_MAX;
 
-    let { path_cmds, endpoints } = get_endpoints(font, char, upem, tolerance);
+    let { svg_paths, svg_endpoints, endpoints } = get_endpoints(font, char, upem, tolerance);
 
     if (endpoints.length > 0) {
         // 用奇偶规则，计算 每个圆弧的 环绕数
@@ -72,7 +73,7 @@ export const get_char_arc = (
 
     extents.scale(1.0 / upem, 1.0 / upem);
 
-    return { path_cmds, arcs, endpoints };
+    return { svg_paths, svg_endpoints, arcs, endpoints };
 };
 
 const get_endpoints = (
@@ -81,13 +82,32 @@ const get_endpoints = (
     size: number,
     tolerance_per_em: number
 ): {
-    path_cmds: string[];
+    svg_paths: string[];
+    svg_endpoints: [number, number][];
     endpoints: ArcEndpoint[];
 } => {
+
+    {
+        let radius = 30
+        let p0 = new Point(radius, 0);
+        let p1 = new Point(0, radius);
+
+        console.log(`p0 = (${p0.x}, ${p0.y}), p1 = (${p1.x}, ${p1.y})`)
+        for (let i = 0; i <= 16; i++) {
+            let angle = i * Math.PI / 8;
+
+            let p2 = new Point(radius * Math.cos(angle), radius * Math.sin(angle));
+
+            let arc = Arc.from_points(p1, p0, p2, false);
+            console.log(`angle = ${angle}, p2 = (${p2.x}, ${p2.y}), d = ${arc.d}`)
+        }
+    }
+
     const glyph = font.charToGlyph(char);
     const glyphPath = glyph.getPath(0, 0, size);
 
-    let path_cmds: string[] = [];
+    let svg_paths: string[] = [];
+    let svg_endpoints: [number, number][] = [];
 
     let path_str = "";
     let accumulate = new GlyphyArcAccumulator();
@@ -98,31 +118,32 @@ const get_endpoints = (
 
     let cmds, flip_y;
 
-    flip_y = -1;
+    flip_y = 1;
     cmds = glyphPath.commands;
 
-    // flip_y = 1;
     // cmds = [
-    //     { type: "M", x: 1260, y: 64 },
-    //     { type: "Q", x1: 1089, y1: -26, x: 831, y: -26 },
-    //     { type: "Q", x1: 498, y1: -26, x: 299, y: 185.5 },
-    //     { type: "Q", x1: 100, y1: 397, x: 100, y: 745 },
-    //     { type: "Q", x1: 100, y1: 1119, x: 324, y: 1347 },
-    //     { type: "Q", x1: 548, y1: 1575, x: 893, y: 1575 },
-    //     { type: "Q", x1: 1115, y1: 1575, x: 1260, y: 1512 },
-    //     { type: "L", x: 1260, y: 1303 },
-    //     { type: "Q", x1: 1094, y1: 1395, x: 895, y: 1395 },
-    //     { type: "Q", x1: 636, y1: 1395, x: 473, y: 1222.5 },
-    //     { type: "Q", x1: 310, y1: 1050, x: 310, y: 757 },
-    //     { type: "Q", x1: 310, y1: 479, x: 462, y: 315.5 },
-    //     { type: "Q", x1: 614, y1: 152, x: 860, y: 152 },
-    //     { type: "Q", x1: 1090, y1: 152, x: 1260, y: 256 },
-    //     { type: "L", x: 1260, y: 64 },
+    //     { type: "M", x: 1417.00, y: 0.00 },
+    //     { type: "L", x: 1196.00, y: 0.00 },
+    //     { type: "L", x: 1038.00, y: 424.00 },
+    //     { type: "L", x: 393.00, y: 424.00 },
+    //     { type: "L", x: 244.00, y: 0.00 },
+    //     { type: "L", x: 23.00, y: 0.00 },
+    //     { type: "L", x: 613.00, y: 1549.00 },
+    //     { type: "L", x: 827.00, y: 1549.00 },
+    //     { type: "L", x: 1417.00, y: 0.00 },
+    //     { type: "Z" },
+    //     { type: "M", x: 976.00, y: 599.00 },
+    //     { type: "L", x: 742.00, y: 1243.00 },
+    //     { type: "Q", x1: 731.00, y1: 1274.00, x: 718.00, y: 1351.00 },
+    //     { type: "L", x: 713.00, y: 1351.00 },
+    //     { type: "Q", x1: 702.00, y1: 1281.00, x: 688.00, y: 1243.00 },
+    //     { type: "L", x: 456.00, y: 599.00 },
+    //     { type: "L", x: 976.00, y: 599.00 },
     //     { type: "Z" }
-    // ]
+    // ];
 
     for (let cmd of cmds) {
-        let tx, ty, tx1, ty1, tx2, ty2;
+        let tx, ty, tx1, ty1;
 
         switch (cmd.type) {
             case "M":
@@ -131,6 +152,8 @@ const get_endpoints = (
                 ty = ty * flip_y;
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
+                    svg_endpoints.push([tx, ty]);
+
                     console.log(`+ M: x = ${tx}, y = ${ty}`);
                     path_str += `M ${tx} ${ty} `;
                     accumulate.move_to(new Point(tx, ty));
@@ -139,7 +162,7 @@ const get_endpoints = (
             case "Z":
                 console.log('+ Z');
                 path_str += "Z";
-                path_cmds.push(path_str);
+                svg_paths.push(path_str);
 
                 path_str = "";
                 accumulate.close_path();
@@ -150,6 +173,7 @@ const get_endpoints = (
                 ty = ty * flip_y;
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
+                    svg_endpoints.push([tx, ty]);
                     console.log(`+ L: x = ${tx}, y = ${ty}`);
                     path_str += `L ${tx} ${ty} `;
                     accumulate.line_to(new Point(tx, ty));
@@ -166,6 +190,7 @@ const get_endpoints = (
                 ty1 = ty1 * flip_y;
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
+                    svg_endpoints.push([tx, ty]);
                     console.log(`+ Q: x1 = ${tx1}, y1 = ${ty1}, x = ${tx}, y = ${ty}`);
                     path_str += `Q ${tx1} ${ty1}, ${tx} ${ty} `;
                     accumulate.conic_to(new Point(tx1, ty1), new Point(tx, ty));
@@ -199,7 +224,7 @@ const get_endpoints = (
     };
 
     console.log("")
-    console.warn(`================= 02. accumulate result: ${accumulate.result.length}`);
+    console.warn(`================= 02. accumulate 结果: ${accumulate.result.length}`);
     let s = []
     for (let r of accumulate.result) {
         s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
@@ -208,18 +233,19 @@ const get_endpoints = (
     console.log("")
 
     return {
-        path_cmds,
+        svg_paths,
+        svg_endpoints,
         endpoints: accumulate.result,
     };
 };
 
 export const to_arc_cmds = (
     endpoints: ArcEndpoint[]
-): [string[][], number[][]] => {
+): [string[][], [number, number][]] => {
     let cmd = []
     let cmd_array = []
     let current_point = null;
-    let pts = [];
+    let pts: [number, number][] = [];
     for (let ep of endpoints) {
         pts.push([ep.p.x, ep.p.y]);
 

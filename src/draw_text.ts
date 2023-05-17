@@ -9,24 +9,107 @@ import * as opentype from 'opentype.js';
  * + 内围：（挖空）逆时针，红-绿-蓝
  */
 export class DrawText {
+    init_x: number;
+    init_y: number;
+    size_x: number;
+    size_y: number;
+
+    // 鼠标上次点击的位置（相对Canvas的坐标）
+    mouse_x: number | null;
+    mouse_y: number | null;
+
     ctx: CanvasRenderingContext2D;
     ttf: string;
     text: string;
     font: Promise<opentype.Font> | null;
+
+    last_arcs: BlobArc | null;
+
+    is_render_network: boolean;
+    is_render_sdf: boolean;
+
+    is_render_bezier: boolean;
+    is_fill_bezier: boolean;
+    is_endpoint_bezier: boolean;
+
+    is_render_arc: boolean;
     is_fill_arc: boolean;
-    is_fill_svg: boolean;
-    is_draw_points: boolean;
-    draw_cmd: [number, number, number, number];
+    is_endpoint_arc: boolean;
 
     constructor(ctx: CanvasRenderingContext2D, ttf = "msyh.ttf") {
+        this.init_x = 0;
+        this.init_y = 0;
+        this.size_x = 0;
+        this.size_y = 0;
+
+        this.mouse_x = null;
+        this.mouse_y = null;
+
         this.ttf = ttf;
         this.ctx = ctx;
         this.font = null;
-        this.text = "C";
-        this.is_fill_arc = true;
-        this.is_fill_svg = true;
-        this.is_draw_points = true;
-        this.draw_cmd = [300, 1800, 1024, 768];
+        this.text = "A";
+
+        this.last_arcs = null;
+
+        this.is_render_network = true;
+        this.is_render_sdf = false;
+
+        this.is_render_bezier = true;
+        this.is_fill_bezier = true;
+        this.is_endpoint_bezier = true;
+
+        this.is_render_arc = false;
+        this.is_fill_arc = false;
+        this.is_endpoint_arc = false;
+    }
+
+    set_mouse_down(x: number, y: number) {
+        this.mouse_x = x;
+        this.mouse_y = y;
+        console.warn(`mouse down: ${x}, ${y}`);
+    }
+
+    set_init_pos(x: number, y: number) {
+        this.init_x = x;
+        this.init_y = y;
+    }
+
+    set_init_size(x: number, y: number) {
+        this.size_x = x;
+        this.size_y = y;
+    }
+
+    set_render_network(is_render: boolean) {
+        this.is_render_network = is_render;
+    }
+
+    set_render_sdf(is_render: boolean) {
+        this.is_render_sdf = is_render;
+    }
+
+    set_render_bezier(is_render: boolean) {
+        this.is_render_bezier = is_render;
+    }
+
+    set_bezier_fill(is_fill: boolean) {
+        this.is_fill_bezier = is_fill;
+    }
+
+    set_bezier_endpoints(is_endpoint: boolean) {
+        this.is_endpoint_bezier = is_endpoint;
+    }
+
+    set_render_arc(is_render: boolean) {
+        this.is_render_arc = is_render;
+    }
+
+    set_arc_fill(is_fill: boolean) {
+        this.is_fill_arc = is_fill;
+    }
+
+    set_arc_endpoints(is_endpoint: boolean) {
+        this.is_endpoint_arc = is_endpoint;
     }
 
     set_text(char: string) {
@@ -36,57 +119,118 @@ export class DrawText {
         }
     }
 
-    set_fill_arc(is_fill_arc: boolean) {
-        this.is_fill_arc = is_fill_arc;
-    }
-
-    set_fill_svg(is_fill_svg: boolean) {
-        this.is_fill_svg = is_fill_svg;
-    }
-
-    set_draw_pts(is_draw_points: boolean) {
-        this.is_draw_points = is_draw_points;
-    }
-
-    redraw() {
-        if (this.draw_cmd) {
-            this.draw(...this.draw_cmd);
-        }
-    }
-
     clear() {
         let ctx = this.ctx;
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
 
-    draw(init_x = 500, init_y = 100, w = 1024, h = 768) {
-        this.draw_cmd = [init_x, init_y, w, h];
+    draw_network_endpoints() {
 
+        let x = this.mouse_x;
+        let y = this.mouse_y;
+
+        if (x === null || y === null) {
+            return;
+        }
+
+        if (!this.is_render_network) {
+            return;
+        }
+        if (!this.last_arcs) {
+            return;
+        }
+
+        let cellSize = this.last_arcs.cell_size;
+
+        let ctx = this.ctx;
+
+        // 计算点击位置对应的网格坐标
+        let i = Math.floor((x - this.init_x) / cellSize);
+        let j = Math.floor((-y + this.init_y) / cellSize);
+
+        if (j < 0 || j >= this.last_arcs.data.length) {
+            return;
+        }
+
+        if (i < 0 || i >= this.last_arcs.data[j].length) {
+            return;
+        }
+
+        console.warn(`draw_network_endpoints: ${i}, ${j}`);
+
+        // 从arcs.data中获取对应的数据
+        let unitArc = this.last_arcs.data[j][i];
+
+        ctx.save();
+        ctx.translate(this.init_x, this.init_y);
+        for (let k = 0; k < unitArc.data.length; k++) {
+            // 注意，这里假设data中所有的元素都是ArcEndpoint类型的
+            let endpoint = unitArc.data[k] as ArcEndpoint;
+
+            ctx.fillStyle = 'black';
+
+            // 在端点位置画出黑点
+            ctx.beginPath();
+            console.warn(`draw_network_endpoints: ${endpoint.p.x}, ${endpoint.p.y}, d = ${endpoint.d}`);
+            ctx.arc(endpoint.p.x, endpoint.p.y, 20, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    draw() {
         if (!this.font) {
             this.font = this.load();
         }
 
         this.font.then(font => {
             let size = font.unitsPerEm;
-            let { path_cmds, arcs, endpoints } = get_char_arc(font, this.text)
+            let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(font, this.text)
 
-            console.log(`cmd_types = `, path_cmds);
-            console.log(`arcs = `, arcs);
+            console.log(`svg_paths = `, svg_paths);
+            console.log(`svg_endpoints = `, svg_endpoints);
             console.log(`endpoints = `, endpoints);
+            console.log(`arcs = `, arcs);
+
+            // for (let i = 0; i < arcs.data.length; ++i) {
+            //     let row = arcs.data[i];
+            //     for (let j = 0; j < row.length; ++j) {
+            //         let arc = row[j];
+            //         let eps = arc.data;
+            //         console.log(`grid(${i}, ${j}):`)
+            //         for (let ep of eps) {
+            //             console.log(`  side = ${arc.side}, ep = (${ep.p.x}, ${ep.p.y}, ${ep.d})`);
+            //         }
+            //     }
+            // }
 
             this.clear();
 
-            this.draw_svg(path_cmds, init_x, init_y, size, w, init_x, this.is_fill_svg);
+            if (this.is_render_bezier) {
+                let is_fill = this.is_fill_bezier;
+                this.draw_svg(svg_paths, this.init_x, this.init_y, size, this.size_x, this.init_x, is_fill, "red");
+            }
+            if (this.is_endpoint_bezier) {
+                this.draw_points(svg_endpoints, this.init_x, this.init_y, "violet");
+            }
 
-            this.draw_arc(endpoints, init_x, init_y, size, w, init_x);
+            let is_fill = this.is_fill_arc;
+            this.draw_arc(endpoints, this.init_x, this.init_y, size, this.size_x, this.init_x, is_fill, "green", "blue");
 
-            this.draw_network(arcs, init_x, init_y)
+            if (this.is_render_network) {
+                this.draw_network(arcs, this.init_x, this.init_y);
+                this.draw_network_endpoints();
+            }
         })
     }
 
     draw_network(arcs: BlobArc, x: number, y: number) {
         let ctx = this.ctx;
         let cellSize = arcs.cell_size;
+
+        this.last_arcs = arcs;
+
+        let flip_y = -1;
 
         console.log(`=========draw_network: x = ${x}, y = ${y}, w * h = (${arcs.width_cells}, ${arcs.height_cells}), size = ${cellSize}`);
 
@@ -103,12 +247,12 @@ export class DrawText {
             // 画竖线
             ctx.beginPath();
             ctx.moveTo(posX, 0.0);
-            ctx.lineTo(posX, arcs.height_cells * cellSize);
+            ctx.lineTo(posX, flip_y * arcs.height_cells * cellSize);
             ctx.stroke();
         }
 
         for (let j = 0; j <= arcs.height_cells; j++) {
-            let posY = j * cellSize;
+            let posY = flip_y * j * cellSize;
 
             // 设置笔触样式和线宽
             ctx.strokeStyle = 'gray';
@@ -131,8 +275,8 @@ export class DrawText {
         for (let j = 0; j < arcs.height_cells; j++) {
             for (let i = 0; i < arcs.width_cells; i++) {
                 let posX = (i + 0.5) * cellSize;
-                let posY = (j + 0.5) * cellSize;
-                let text = arcs.data[arcs.height_cells - 1 - j][i].data.length.toString();
+                let posY = flip_y * (j + 0.5) * cellSize;
+                let text = arcs.data[j][i].data.length.toString();
 
                 ctx.fillText(text, posX, posY);
             }
@@ -143,9 +287,10 @@ export class DrawText {
     }
 
 
-    draw_arc(endpoints: ArcEndpoint[], x: number, y: number, size: number, w: number, init_x: number) {
+    draw_arc(endpoints: ArcEndpoint[], x: number, y: number, size: number, w: number, init_x: number, is_fill = false, color = "green", endpoints_color = "blue") {
 
         let [cmds, pts] = to_arc_cmds(endpoints);
+
         console.log("")
         console.warn(`============== 04. 圆弧`);
         for (let cmd_array of cmds) {
@@ -160,25 +305,28 @@ export class DrawText {
             cmd_s.push(cmd_array.join(" "));
         }
 
-        this.draw_svg(cmd_s, x, y, size, w, init_x, this.is_fill_arc, "blue");
-        if (this.is_draw_points) {
-            this.draw_points(pts, x, y, "red")
+        if (this.is_render_arc) {
+            this.draw_svg(cmd_s, x, y, size, w, init_x, is_fill, color);
+        }
+
+        if (this.is_endpoint_arc) {
+            this.draw_points(pts, x, y, endpoints_color)
         }
     }
 
-    draw_points(pts: number[][], x: number, y: number, color = "black") {
+    draw_points(pts: [number, number][], x: number, y: number, color = "black") {
         this.ctx.save();
         this.ctx.translate(x, y);
         for (let pt of pts) {
             this.ctx.beginPath();
-            this.ctx.arc(pt[0], pt[1], 3, 0, Math.PI * 2);
+            this.ctx.arc(pt[0], pt[1], 8, 0, Math.PI * 2);
             this.ctx.fillStyle = color;
             this.ctx.fill();
         }
         this.ctx.restore();
     }
 
-    draw_svg(path_cmds: string[], x: number, y: number, size: number, w: number, init_x: number, is_fill = true, color = "black") {
+    draw_svg(path_cmds: string[], x: number, y: number, size: number, w: number, init_x: number, is_fill = true, color = "red") {
         let paths = []
         for (let cmd of path_cmds) {
             let path = new Path2D(cmd)
@@ -205,46 +353,6 @@ export class DrawText {
         if (x > w) {
             x = init_x;
             y += size;
-        }
-
-        return
-
-        for (let i = 0; i < paths.length; ++i) {
-            let p = paths[i]
-
-            this.ctx.save();
-            this.ctx.translate(x, y);
-
-            this.ctx.fillStyle = 'black';
-            this.ctx.fill(p);
-
-            // let pts = paths_pts[i]
-
-            // this.ctx.beginPath();
-            // let [px, py] = pts[0]
-            // this.ctx.arc(px, py, 3, 0, Math.PI * 2);
-            // this.ctx.fillStyle = 'red';
-            // this.ctx.fill();
-
-            // this.ctx.beginPath();
-            // [px, py] = pts[1];
-            // this.ctx.arc(px, py, 3, 0, Math.PI * 2);
-            // this.ctx.fillStyle = 'green';
-            // this.ctx.fill();
-
-            // this.ctx.beginPath();
-            // [px, py] = pts[2];
-            // this.ctx.arc(px, py, 3, 0, Math.PI * 2);
-            // this.ctx.fillStyle = 'blue';
-            // this.ctx.fill();
-
-            this.ctx.restore();
-
-            x += size;
-            if (x > w) {
-                x = init_x;
-                y += size;
-            }
         }
     }
 

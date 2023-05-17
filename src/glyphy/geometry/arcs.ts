@@ -49,7 +49,7 @@ export class GlyphyArcAccumulator {
 
     // d = inf，就是 移动点
     move_to(p: Point) {
-        if (!this.num_endpoints || p.equals(this.current_point)) {
+        if (!this.num_endpoints || !p.equals(this.current_point)) {
             this.accumulate(p, GLYPHY_INFINITY);
         }
     }

@@ -14,7 +14,8 @@ const MAX_X = 4095;
 const MAX_Y = 4095;
 
 export interface UnitArc {
-	data: (ArcEndpoint | Line)[]
+	side: number, // 1 外；-1 内
+	data: ArcEndpoint[]
 }
 
 export interface BlobArc {
@@ -173,6 +174,7 @@ export const glyphy_arc_list_encode_blob2 = (
 		for (let col = 0; col < grid_w; col++) {
 
 			let unit_arc: UnitArc = {
+				side: 1,
 				data: [],
 			};
 			row_arcs.push(unit_arc)
@@ -183,7 +185,7 @@ export const glyphy_arc_list_encode_blob2 = (
 			near_endpoints.length = 0;
 
 			// 判断 每个 格子 最近的 圆弧
-			let side = closest_arcs_to_cell(
+			unit_arc.side = closest_arcs_to_cell(
 				cp0, cp1,
 				faraway,
 				enlighten_max,
@@ -191,24 +193,11 @@ export const glyphy_arc_list_encode_blob2 = (
 				endpoints,
 				near_endpoints
 			);
-
-			const QUANTIZE_X = (x: number) => Math.floor(MAX_X * ((x - extents.min_x) / glyph_width));
-			const QUANTIZE_Y = (y: number) => Math.floor(MAX_Y * ((y - extents.min_y) / glyph_width));
-
-			const DEQUANTIZE_X = (x: number) => x / MAX_X * glyph_width + extents.min_x;
-			const DEQUANTIZE_Y = (y: number) => y / MAX_Y * glyph_height + extents.min_y;
-
-			const SNAP = (p: Point) => new Point(DEQUANTIZE_X(QUANTIZE_X(p.x)), DEQUANTIZE_Y(QUANTIZE_Y(p.y)));
-
+			
 			// 线段，终点的 d = 0
 			if (near_endpoints.length == 2 && near_endpoints[1].d == 0) {
-				let c = new Point(extents.min_x + glyph_width * .5, extents.min_y + glyph_height * .5);
-				let line = Line.from_points(SNAP(near_endpoints[0].p), SNAP(near_endpoints[1].p));
-				line.c -= line.n.dot(c.into_vector());
-				line.c /= unit;
-
-				unit_arc.data.push(line)
-
+				unit_arc.data.push(near_endpoints[0]);
+				unit_arc.data.push(near_endpoints[1]);
 				continue;
 			}
 
@@ -231,11 +220,7 @@ export const glyphy_arc_list_encode_blob2 = (
 			// 编码到纹理：该格子 对应 的 圆弧数据
 			for (let i = 0; i < near_endpoints.length; i++) {
 				let endpoint = near_endpoints[i];
-				let r = {
-					p: new Point(QUANTIZE_X(endpoint.p.x), QUANTIZE_Y(endpoint.p.y)),
-					d: endpoint.d,
-				};
-				unit_arc.data.push(r)
+				unit_arc.data.push(endpoint)
 			}
 		}
 	}

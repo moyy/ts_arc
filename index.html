@@ -7,9 +7,42 @@
 </head>
 
 <body>
-    <input type="text" id="char" value = "C" placeholder="输入一个字符">
-    <input type="checkbox" id="fillSvg">填充贝塞尔
-    <input type="checkbox" id="fillArc">填充圆弧
+    <label for="char">输入要渲染的字符：</label>
+    <input type="text" id="char" value="A" placeholder="输入一个字符">
+    <br>
+    <form>
+        <fieldset>
+            <legend>贝塞尔曲线</legend>
+            <input type="checkbox" id="isBezierRender">
+            <label for="isBezierRender">是否渲染</label><br>
+            <input type="radio" id="bezierFill" name="bezier" value="fill" checked>
+            <label for="bezierFill">Fill: 红色</label><br>
+            <input type="radio" id="bezierStroke" name="bezier" value="stroke">
+            <label for="bezierStroke">Stroke: 红色</label><br>
+            <input type="checkbox" id="bezierEndpoints">
+            <label for="bezierEndpoints">Endpoints: 紫</label>
+        </fieldset>
+        <fieldset>
+            <legend>圆弧</legend>
+            <input type="checkbox" id="isArcRender" checked>
+            <label for="isArcRender">是否渲染</label><br>
+            <input type="radio" id="arcFill" name="arc" value="fill" checked>
+            <label for="arcFill">Fill: 绿色</label><br>
+            <input type="radio" id="arcStroke" name="arc" value="stroke">
+            <label for="arcStroke">Stroke: 绿色</label><br>
+            <input type="checkbox" id="arcEndpoints" checked>
+            <label for="arcEndpoints">Endpoints: 蓝色</label>
+        </fieldset>
+        <fieldset>
+            <legend>SDF</legend>
+            <input type="checkbox" id="grid" checked>
+            <label for="grid">画网格（此时，左键点击格子，会出现格子对应的端点【黑色】）</label><br>
+
+            <input type="checkbox" id="isSDFRender">
+            <label for="isSDFRender">渲染 SDF</label><br>
+            </label>
+        </fieldset>
+    </form>
     <canvas id="myCanvas" width="3000" height="3000"></canvas>
     <script type="module" src="dist/app.js"></script>
 </body>
