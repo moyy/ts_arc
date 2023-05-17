@@ -10,7 +10,6 @@ import { GLYPHY_INFINITY, is_inf } from "./util.js";
 const MAX_GRID_SIZE = 63;
 
 const MAX_X = 4095;
-
 const MAX_Y = 4095;
 
 export interface UnitArc {
@@ -22,6 +21,7 @@ export interface BlobArc {
 	cell_size: number,
 	width_cells: number,
 	height_cells: number,
+	extents: AABB,
 	data: UnitArc[][],
 	avg_fetch_achieved: number,
 }
@@ -125,12 +125,13 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	if (extents.is_empty()) {
 		// 不可显示 字符，比如 空格，制表符 等 
-		pextents.clone(extents);
+		pextents.set(extents);
 
 		return {
 			width_cells: 1,
 			height_cells: 1,
 			cell_size: 1,
+			extents: extents.clone(),
 			data: [],
 			avg_fetch_achieved: 0,
 		}
@@ -193,7 +194,7 @@ export const glyphy_arc_list_encode_blob2 = (
 				endpoints,
 				near_endpoints
 			);
-			
+
 			// 线段，终点的 d = 0
 			if (near_endpoints.length == 2 && near_endpoints[1].d == 0) {
 				unit_arc.data.push(near_endpoints[0]);
@@ -225,12 +226,14 @@ export const glyphy_arc_list_encode_blob2 = (
 		}
 	}
 
-	pextents.clone(extents);
+	pextents.set(extents);
+
 	return {
 		cell_size: cell_unit,
 		width_cells: grid_w,
 		height_cells: grid_h,
 		data: result_arcs,
+		extents: extents.clone(),
 		avg_fetch_achieved: 1 + total_arcs / (grid_w * grid_h)
 	}
 }

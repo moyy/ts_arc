@@ -24,7 +24,11 @@ export class AABB {
         this.max_y = -GLYPHY_INFINITY;
     }
 
-    clone(other: AABB) {
+    clone() {
+        return new AABB(this.min_x, this.min_y, this.max_x, this.max_y);
+    }
+
+    set(other: AABB) {
         this.min_x = other.min_x;
         this.min_y = other.min_y;
 
@@ -64,7 +68,7 @@ export class AABB {
 
         // 自己是空，就是对方
         if (this.is_empty()) {
-            this.clone(other);
+            this.set(other);
             return;
         }
 

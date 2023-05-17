@@ -136,17 +136,25 @@ export class DrawText {
         if (!this.is_render_network) {
             return;
         }
+
         if (!this.last_arcs) {
             return;
         }
 
         let cellSize = this.last_arcs.cell_size;
 
-        let ctx = this.ctx;
 
         // 计算点击位置对应的网格坐标
-        let i = Math.floor((x - this.init_x) / cellSize);
-        let j = Math.floor((-y + this.init_y) / cellSize);
+        x = x - this.init_x;
+        y = -y + this.init_y;
+        
+        x -= this.last_arcs.extents.min_x;
+        y -= this.last_arcs.extents.min_y;
+
+        let i = Math.floor(x / cellSize);
+        let j = Math.floor(y / cellSize);
+
+        console.warn(`draw_network_endpoints: ${i}, ${j}`);
 
         if (j < 0 || j >= this.last_arcs.data.length) {
             return;
@@ -156,13 +164,13 @@ export class DrawText {
             return;
         }
 
-        console.warn(`draw_network_endpoints: ${i}, ${j}`);
-
         // 从arcs.data中获取对应的数据
         let unitArc = this.last_arcs.data[j][i];
 
+        let ctx = this.ctx;
         ctx.save();
         ctx.translate(this.init_x, this.init_y);
+        ctx.scale(1, -1);
         for (let k = 0; k < unitArc.data.length; k++) {
             // 注意，这里假设data中所有的元素都是ArcEndpoint类型的
             let endpoint = unitArc.data[k] as ArcEndpoint;
@@ -230,13 +238,14 @@ export class DrawText {
 
         this.last_arcs = arcs;
 
-        let flip_y = -1;
-
-        console.log(`=========draw_network: x = ${x}, y = ${y}, w * h = (${arcs.width_cells}, ${arcs.height_cells}), size = ${cellSize}`);
+        console.log(`=========draw_network: x = ${x}, y = ${y}, extents = (${arcs.extents.min_x}, ${arcs.extents.min_y}, ${arcs.extents.max_x}, ${arcs.extents.max_y}), w * h = (${arcs.width_cells}, ${arcs.height_cells}), size = ${cellSize}`);
 
         // 保存 ctx 的当前状态
         ctx.save();
         ctx.translate(x, y);
+        ctx.scale(1, -1);
+        ctx.translate(arcs.extents.min_x, arcs.extents.min_y);
+
         for (let i = 0; i <= arcs.width_cells; i++) {
             let posX = i * cellSize;
 
@@ -247,12 +256,12 @@ export class DrawText {
             // 画竖线
             ctx.beginPath();
             ctx.moveTo(posX, 0.0);
-            ctx.lineTo(posX, flip_y * arcs.height_cells * cellSize);
+            ctx.lineTo(posX, arcs.height_cells * cellSize);
             ctx.stroke();
         }
 
         for (let j = 0; j <= arcs.height_cells; j++) {
-            let posY = flip_y * j * cellSize;
+            let posY = j * cellSize;
 
             // 设置笔触样式和线宽
             ctx.strokeStyle = 'gray';
@@ -275,10 +284,13 @@ export class DrawText {
         for (let j = 0; j < arcs.height_cells; j++) {
             for (let i = 0; i < arcs.width_cells; i++) {
                 let posX = (i + 0.5) * cellSize;
-                let posY = flip_y * (j + 0.5) * cellSize;
+                let posY = (j + 0.5) * cellSize;
                 let text = arcs.data[j][i].data.length.toString();
 
-                ctx.fillText(text, posX, posY);
+                ctx.save();
+                ctx.scale(1, -1);
+                ctx.fillText(text, posX, -posY);  // 注意这里 y 坐标的符号
+                ctx.restore();
             }
         }
 
@@ -317,6 +329,7 @@ export class DrawText {
     draw_points(pts: [number, number][], x: number, y: number, color = "black") {
         this.ctx.save();
         this.ctx.translate(x, y);
+        this.ctx.scale(1, -1);
         for (let pt of pts) {
             this.ctx.beginPath();
             this.ctx.arc(pt[0], pt[1], 8, 0, Math.PI * 2);
@@ -340,6 +353,7 @@ export class DrawText {
 
         this.ctx.save(); // 保存当前的上下文状态
         this.ctx.translate(x, y);
+        this.ctx.scale(1, -1);
         if (is_fill) {
             this.ctx.fillStyle = color;
             this.ctx.fill(path);

@@ -118,9 +118,10 @@ const get_endpoints = (
 
     let cmds, flip_y;
 
-    flip_y = 1;
+    flip_y = -1;
     cmds = glyphPath.commands;
-
+    
+    // flip_y = 1;
     // cmds = [
     //     { type: "M", x: 1417.00, y: 0.00 },
     //     { type: "L", x: 1196.00, y: 0.00 },
@@ -149,9 +150,12 @@ const get_endpoints = (
             case "M":
                 tx = cmd.x || 0;
                 ty = cmd.y || 0;
-                ty = ty * flip_y;
+                ty *= flip_y;
+
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
+
+
                     svg_endpoints.push([tx, ty]);
 
                     console.log(`+ M: x = ${tx}, y = ${ty}`);
@@ -170,7 +174,8 @@ const get_endpoints = (
             case "L":
                 tx = cmd.x || 0;
                 ty = cmd.y || 0;
-                ty = ty * flip_y;
+                ty *= flip_y;
+                
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
                     svg_endpoints.push([tx, ty]);
