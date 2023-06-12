@@ -18,6 +18,13 @@ export class DrawText {
     mouse_x: number | null;
     mouse_y: number | null;
 
+    last_arc_count: number;
+    last_bezier_count: number;
+    // 宽 * 高
+    last_cell_count: [number, number];
+
+    last_data_texture_pixels: [number, number];
+    
     ctx: CanvasRenderingContext2D;
     ttf: string;
     text: string;
@@ -45,6 +52,11 @@ export class DrawText {
         this.mouse_x = null;
         this.mouse_y = null;
 
+        this.last_arc_count = 0;
+        this.last_bezier_count = 0;
+        this.last_cell_count = [0, 0];
+        this.last_data_texture_pixels = [0, 0];
+        
         this.ttf = ttf;
         this.ctx = ctx;
         this.font = null;
@@ -147,7 +159,7 @@ export class DrawText {
         // 计算点击位置对应的网格坐标
         x = x - this.init_x;
         y = -y + this.init_y;
-        
+
         x -= this.last_arcs.extents.min_x;
         y -= this.last_arcs.extents.min_y;
 
@@ -186,6 +198,22 @@ export class DrawText {
         ctx.restore();
     }
 
+    get_arc_count() {
+        return this.last_arc_count;
+    }
+
+    get_bezier_count() {
+        return this.last_bezier_count;
+    }
+
+    get_cell_count() {
+        return this.last_cell_count;
+    }
+
+    get_data_texture_pixels() {
+        return this.last_data_texture_pixels;
+    }
+
     draw() {
         if (!this.font) {
             this.font = this.load();
@@ -194,6 +222,11 @@ export class DrawText {
         this.font.then(font => {
             let size = font.unitsPerEm;
             let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(font, this.text)
+
+            this.last_arc_count = endpoints.length;
+            this.last_bezier_count = svg_endpoints.length;
+            this.last_cell_count = [arcs.width_cells, arcs.height_cells];
+            this.last_data_texture_pixels = [arcs.before_pixels, arcs.after_pixels];
 
             console.log(`svg_paths = `, svg_paths);
             console.log(`svg_endpoints = `, svg_endpoints);
@@ -285,7 +318,12 @@ export class DrawText {
             for (let i = 0; i < arcs.width_cells; i++) {
                 let posX = (i + 0.5) * cellSize;
                 let posY = (j + 0.5) * cellSize;
-                let text = arcs.data[j][i].data.length.toString();
+                let unit = arcs.data[j][i];
+
+                let text = unit.data.length.toString();
+                if (unit.side < 0 && unit.data.length === 0) {
+                    text = "-1";
+                }
 
                 ctx.save();
                 ctx.scale(1, -1);

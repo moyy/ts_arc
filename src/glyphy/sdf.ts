@@ -10,12 +10,16 @@ import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
 export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => {
     let num_endpoints = endpoints.length;
 
-    let c = p.clone();
+    let c = p.clone(); 
     let p0 = new Point()
     let closest_arc = new Arc(p0, p0, 0);
 
     let min_dist = GLYPHY_INFINITY;
     let side = 0;
+
+    // 影响 min_dist 的 端点
+    let last_ep = null;
+    let effect_endpoints = []
 
     for (let i = 0; i < num_endpoints; i++) {
         let endpoint = endpoints[i];
@@ -23,12 +27,12 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
         // 无穷代表 Move 语义
         if (endpoint.d == GLYPHY_INFINITY) {
             p0 = endpoint.p;
+            last_ep = endpoint;
             continue;
         }
 
         let arc = new Arc(p0, endpoint.p, endpoint.d);
-        p0 = endpoint.p;
-
+        
         // 在圆弧 夹角范围内
         if (arc.wedge_contains_point(c)) {
             /* TODO This distance has the wrong sign.  Fix */
@@ -37,6 +41,7 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
             let udist = Math.abs(sdist) * (1 - GLYPHY_EPSILON);
             if (udist <= min_dist) {
                 min_dist = udist;
+                effect_endpoints = [last_ep, endpoint];
                 side = sdist >= 0 ? -1 : +1;
             }
         } else {
@@ -47,6 +52,9 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
                 min_dist = udist;
                 side = 0; /* unsure */
                 closest_arc = arc;
+
+                effect_endpoints = [last_ep, endpoint];
+
             } else if (side == 0 && udist == min_dist) {
                 /* If this new distance is the same as the current minimum,
                  * compare extended distances.  Take the sig;n from the arc
@@ -62,6 +70,9 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
                 side = ext_dist >= 0 ? +1 : -1;
             }
         }
+
+        p0 = endpoint.p;
+        last_ep = endpoint;
     }
 
     if (side == 0) {

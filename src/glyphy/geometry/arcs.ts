@@ -165,6 +165,7 @@ export const glyphy_arc_list_extents = (endpoints: ArcEndpoint[], extents: AABB)
         arc.extents(arc_extents);
         extents.extend(arc_extents);
     }
+    
 }
 
 

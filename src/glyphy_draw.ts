@@ -9,15 +9,7 @@ import * as opentype from "opentype.js";
 
 const MIN_FONT_SIZE = 10;
 
-/**
- * 单位：Per EM
- * 值越大，划分的单元格 越多，需要的纹理空间 就越大
- * 值越小，划分的单元格 越少，单个格子的圆弧数 有可能 越多
- * 一般 字体越复杂，需要越大的数字
- */
-const GRID_SIZE = 20; /* Per EM */
-
-const TOLERANCE = 1.0 / 1024;
+const TOLERANCE = 10.0 / 1024;
 
 const ENLIGHTEN_MAX = 0.01; /* Per EM */
 
@@ -39,11 +31,24 @@ export const get_char_arc = (
     let upem = font.unitsPerEm;
     let tolerance = upem * tolerance_per_em; /* in font design units */
     let faraway = upem / (MIN_FONT_SIZE * Math.sqrt(2));
-    let unit_size = upem / GRID_SIZE;
     let enlighten_max = upem * ENLIGHTEN_MAX;
     let embolden_max = upem * EMBOLDEN_MAX;
 
     let { svg_paths, svg_endpoints, endpoints } = get_endpoints(font, char, upem, tolerance);
+
+    /**
+     * 单位：Per EM
+     * 值越大，划分的单元格 越多，需要的纹理空间 就越大
+     * 值越小，划分的单元格 越少，单个格子的圆弧数 有可能 越多
+     * 一般 字体越复杂，需要越大的数字
+     */
+    // const GRID_SIZE = 30; /* Per EM */
+    // let grid_size = GRID_SIZE;
+
+    let grid_size = Math.ceil(endpoints.length / 4); /* Per EM */
+    grid_size = grid_size < 20 ? 20 : grid_size;
+
+    let unit_size = upem / grid_size;
 
     if (endpoints.length > 0) {
         // 用奇偶规则，计算 每个圆弧的 环绕数
@@ -120,7 +125,7 @@ const get_endpoints = (
 
     flip_y = -1;
     cmds = glyphPath.commands;
-    
+
     // flip_y = 1;
     // cmds = [
     //     { type: "M", x: 1417.00, y: 0.00 },
@@ -175,7 +180,7 @@ const get_endpoints = (
                 tx = cmd.x || 0;
                 ty = cmd.y || 0;
                 ty *= flip_y;
-                
+
                 if (last_point[0] !== tx || last_point[1] !== ty) {
                     last_point = [tx, ty];
                     svg_endpoints.push([tx, ty]);

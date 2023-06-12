@@ -9,7 +9,7 @@
 <body>
     <label for="char">(0, 0) 在左下角</label>
     <label for="char">输入要渲染的字符：</label>
-    <input type="text" id="char" value="A" placeholder="输入一个字符">
+    <input type="text" id="char" value="魔" placeholder="输入一个字符">
     <br>
     <form>
         <fieldset>
@@ -44,6 +44,16 @@
             </label>
         </fieldset>
     </form>
+
+    <label>圆弧 端点 数量：</label><label id="arc_count">：</label>
+    <br>
+    <label>贝塞尔曲线 端点 数量：</label><label id="bezier_count"></label>
+    <br>
+    <label>格子数：</label><label id="cell_count"></label>
+    <br>
+    <label>数据纹理 像素数量：</label><label id="data_texture_pixels"></label>
+    <br>
+
     <canvas id="myCanvas" width="3000" height="3000"></canvas>
     <script type="module" src="dist/app.js"></script>
 </body>
