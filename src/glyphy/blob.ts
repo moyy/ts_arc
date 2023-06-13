@@ -284,19 +284,10 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 	let [data_map, data_tex] = encode_data_tex(data, extents, glyph_width, glyph_height);
 
-	// offset 最大位数
-	let offset_bits = Math.ceil(Math.log2(data_tex.length / 4));
-
 	// 2 * grid_w * grid_h 个 Uint8
 	let indiecs = [];
 	for (let row of data.data) {
 		for (let unit_arc of row) {
-
-			let num_points = 0;
-			let side = unit_arc.side <= 0 ? 0 : 1;
-			let min_dist = unit_arc.min_dist;
-			let offset = 0;
-
 			let key = get_key(unit_arc);
 			if (key) {
 				let map_arc_data = data_map.get(key);
@@ -304,89 +295,90 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("unit_arc not found");
 				}
 
-				num_points = map_arc_data.data.length;
+				let num_points = map_arc_data.data.length;
 				if (num_points > 3) {
 					num_points = 0;
 				}
 
-				offset = map_arc_data.offset;
+				let offset = map_arc_data.offset;
+				let max_offset = data_tex.length / 4
+				let sdf = unit_arc.side * unit_arc.min_dist;
+				let r = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, max_sdf);
+				indiecs.push(r);
 
-				let r = encode_to_uint16(num_points, side, min_dist, offset, offset_bits, min_sdf, max_sdf);
-
-				indiecs.push(r & 0xff);
-
-				console.log(`offset_bits = ${offset_bits}, min_sdf = ${min_sdf}, max_sdf = ${max_sdf}`);
-
-				console.log(`encode_to_uint16, r = ${r}`, { num_points, side, min_dist, offset });
-
-				let r1 = decode_from_uint16(r, offset_bits, min_sdf, max_sdf);
-				console.log("decode_from_uint16", r1);
+				let r1 = decode_from_uint16(r, min_sdf, max_sdf, max_offset);
+				if (r1.num_points != num_points || r1.offset != offset) {
+					console.error(`encode index error: min_sdf: ${min_sdf}, max_sdf: ${max_sdf}, max_offset: ${max_offset}`);
+					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, r: ${r}`);
+					console.error(`encode index error: decode_from_uint16: num_points: ${r1.num_points}, offset: ${r1.offset}, sdf: ${r1.sdf}`);
+					console.error(``);
+				}
 			}
 		}
 	}
 	return indiecs;
 }
 
-// 将下面数据编码成 UNSIGNED_SHORT_4_4_4_4, 共 2B
-//    [15-14] num_endpoint, 2bit: 0, 1, 2, 3
-//         0：到偏移处 一直 采样到 全0的像素 为止；
-//	  [13] 0 SDF 为负，1 SDF 为正
-//    [11-0]: abs_dist, offset
-//        abs_dist = 0 全部都是内部
-//        abs_dist 是浮点数，需要转换为定点数
-//        offset 有 offset_bits 位。x >= Ceil(lg2(数据纹理的像素数量))
 const encode_to_uint16 = (
 	num_points: number,  // 只有 0，1，2，3 四个值
-	side: number,        // 只有 0 或 1
-	abs_dist: number,    // 大于0的浮点数
-	offset: number,      // 正整数
-	offset_bits: number, // 正整数
-	min_sdf: number,     // abs_dist 的 最小值, 
-	max_sdf: number      // abs_dist 的 最大值
-): number => {
-	// 计算 scaleFactor，需要确保 abs_dist 可以准确地被编码和解码
-	const scaleFactor = (Math.pow(2, 12 - offset_bits) - 1) / (max_sdf - min_sdf);
 
-	// 将浮点数 abs_dist 转换为定点数
-	let fixedPointAbsDist = 0;
+	offset: number,      // 数据 在 数据纹理 的偏移，单位：像素，介于 [0, max_offset] 之间
+	max_offset: number,  // 最大的偏移，单位像素
 
-	// 当 abs_dist 不为 0 时，将其转换为定点数
-	if (abs_dist !== 0) {
-		fixedPointAbsDist = Math.round((abs_dist - min_sdf) * scaleFactor);
+	sdf: number,         // 浮点数，介于 [min_sdf, max_sdf] 之间
+	min_sdf: number,     // sdf 的 最小值, 为负数表示内部
+	max_sdf: number,      // sdf 的 最大值, 为负数表示内部
+) => {
+	max_offset += 1;
+
+	// [0, level)
+	let level = Math.floor(2 ** 14 / max_offset) - 1;
+	if (level < 1) {
+		level = 1;
 	}
 
-	let result =
-		(num_points << 14) |
-		(side << 13) |
-		(fixedPointAbsDist << offset_bits) |
-		(offset & ((1 << offset_bits) - 1)); // 保证 offset 不会超出其分配的位数
+	let sdf_range = max_sdf - min_sdf + 0.1;
 
-	return result;
+	// 量化：将 sdf_range 分成 level 个区间，看 sdf 落在哪个区间
+	let sdf_step = sdf_range / level;
+
+	// 以区间的索引作为sdf的编码
+	let sdf_index = Math.floor((sdf - min_sdf) / sdf_step);
+
+	// 将 sdf_index 和 offset 编码到一个 uint16 中
+	// 注：二维坐标 编码成 一维数字的常用做法
+	let sdf_and_offset_index = sdf_index * max_offset + offset
+
+	let r = (num_points << 14) | sdf_and_offset_index;
+	r = r & 0xffff;
+	return r;
 }
 
 const decode_from_uint16 = (
 	value: number,
-	offset_bits: number,
-	min_sdf: number,     // abs_dist 的 最小值, 
-	max_sdf: number      // abs_dist 的 最大值
+	min_sdf: number,
+	max_sdf: number,
+	max_offset: number,
 ) => {
+	max_offset += 1;
+
 	let num_points = value >> 14;
-	let side = (value >> 13) & 1;
+	let sdf_and_offset_index = value & ((1 << 14) - 1);
 
-	// 计算 scaleFactor
-	const scaleFactor = (Math.pow(2, 12 - offset_bits) - 1) / (max_sdf - min_sdf);
-
-	let fixedPointAbsDist = (value >> offset_bits) & ((1 << (12 - offset_bits)) - 1);
-	let offset = value & ((1 << offset_bits) - 1);
-
-	let abs_dist = 0;
-
-	// 当 fixedPointAbsDist 不为 0 时，将其转换回浮点数
-	if (fixedPointAbsDist !== 0) {
-		abs_dist = fixedPointAbsDist / scaleFactor + min_sdf;
+	let level = Math.floor(2 ** 14 / max_offset) - 1;
+	if (level < 1) {
+		level = 1;
 	}
 
-	return { num_points, side, abs_dist, offset };
+	let sdf_range = max_sdf - min_sdf + 0.1;
+	let sdf_step = sdf_range / level;
+
+	let sdf_index = Math.floor(sdf_and_offset_index / max_offset);
+	let offset = sdf_and_offset_index % max_offset;
+
+	let sdf = sdf_index * sdf_step + min_sdf;
+
+	return { num_points, sdf, offset };
 }
 
 const get_key = (unit_arc: UnitArc) => {
@@ -419,7 +411,6 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 	}
 
 	data.before_pixels = before_size;
-	data.after_pixels = after_size;
 
 	let r = [];
 	for (let unit_arc of map.values()) {
@@ -437,7 +428,10 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 		}
 	}
 
+	data.after_pixels = r.length / 4;
+
 	let tex_data = new Uint8Array(r);
+
 	return [map, tex_data];
 }
 
@@ -506,22 +500,26 @@ const arc_endpoint_encode = (ix: number, iy: number, d: number): [number, number
 }
 
 const travel_data = (blob: BlobArc) => {
-
-	let min_sdf = Infinity;
-	let max_sdf = -Infinity;
-
 	let queue: [number, number, UnitArc][] = [];
+
+	// 记住那些坐标是原始数据的坐标
+	// 键是 (i, j)
+	let origin_map = new Set<string>();
+
 	// 初始化队列
 	for (let i = 0; i < blob.data.length; ++i) {
 		let row = blob.data[i];
 		for (let j = 0; j < row.length; ++j) {
 			let unit_arc = row[j];
 			if (unit_arc.data.length > 0) {
+				origin_map.add(`(${i},${j})`);
 				queue.push([i, j, unit_arc]);
 			}
 		}
 	}
 
+	let min_sdf = Infinity;
+	let max_sdf = -Infinity;
 	while (queue.length > 0) {
 		let d = queue.shift();
 		if (!d) {
@@ -529,22 +527,26 @@ const travel_data = (blob: BlobArc) => {
 		}
 
 		let [i, j, unit_arc] = d;
-		if (unit_arc.min_dist < min_sdf) {
-			min_sdf = unit_arc.min_dist;
+
+		let curr_dist = unit_arc.side * unit_arc.min_dist;
+
+		if (curr_dist < min_sdf) {
+			min_sdf = curr_dist;
 		}
-		if (unit_arc.min_dist > max_sdf) {
-			max_sdf = unit_arc.min_dist;
+		if (curr_dist > max_sdf) {
+			max_sdf = curr_dist;
 		}
 
 		let neibors = get_neibor(blob, i, j);
 		for (let [ii, jj] of neibors) {
 			let neibor_arc = blob.data[ii][jj];
 
-			let new_dist = unit_arc.min_dist + blob.cell_size * Math.sqrt((ii - i) ** 2 + (jj - j) ** 2)
+			let new_dist = unit_arc.side * unit_arc.min_dist;
+			new_dist += blob.cell_size * Math.sqrt((ii - i) ** 2 + (jj - j) ** 2);
+
 			if (neibor_arc.data.length === 0) {
 				/// 没数据，就复制当前的过去
-				if (neibor_arc.side >= 0) {
-					// 中心点在里面，又没有相交，不处理
+				if (!origin_map.has(`(${ii},${jj})`)) {
 					neibor_arc.data = unit_arc.data;
 					neibor_arc.min_dist = new_dist;
 					queue.push([ii, jj, neibor_arc]);
@@ -552,9 +554,11 @@ const travel_data = (blob: BlobArc) => {
 			} else {
 				// 有数据，而且 旧数据 比 new_dist 大，就更新
 				if (neibor_arc.min_dist > new_dist) {
-					neibor_arc.data = unit_arc.data;
-					neibor_arc.min_dist = new_dist;
-					queue.push([ii, jj, neibor_arc]);
+					if (!origin_map.has(`(${ii},${jj})`)) {
+						neibor_arc.data = unit_arc.data;
+						neibor_arc.min_dist = new_dist;
+						queue.push([ii, jj, neibor_arc]);
+					}
 				}
 			}
 		}
