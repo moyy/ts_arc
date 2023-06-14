@@ -19,6 +19,8 @@ export interface UnitArc {
 	side: number, // 1 外；-1 内
 	min_dist: number, // 方格中心对应的sdf
 
+	show: string, // 用于Canvas显示的字符串
+
 	data: ArcEndpoint[]
 }
 
@@ -28,9 +30,8 @@ export interface BlobArc {
 	width_cells: number,
 	height_cells: number,
 
-	// 去重前 和 去重后的 端点 总数量
-	before_pixels: number;
-	after_pixels: number;
+	// 显示
+	show: string,
 
 	extents: AABB,
 	data: UnitArc[][],
@@ -146,8 +147,7 @@ export const glyphy_arc_list_encode_blob2 = (
 			height_cells: 1,
 			cell_size: 1,
 
-			before_pixels: 1,
-			after_pixels: 1,
+			show: "",
 
 			extents: extents.clone(),
 			data: [],
@@ -196,6 +196,7 @@ export const glyphy_arc_list_encode_blob2 = (
 				offset: 0,
 				side: 1,
 				min_dist: 0,
+				show: "",
 				data: [],
 			};
 			row_arcs.push(unit_arc)
@@ -255,8 +256,7 @@ export const glyphy_arc_list_encode_blob2 = (
 		width_cells: grid_w,
 		height_cells: grid_h,
 
-		before_pixels: 1,
-		after_pixels: 1,
+		show: "",
 
 		data: result_arcs,
 		extents: extents.clone(),
@@ -265,24 +265,48 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	let [min_sdf, max_sdf] = travel_data(data);
 
+	data.show += `<br> 格子数：宽 = ${grid_w}, 高 = ${grid_h} <br>`;
+
 	encode_to_tex(data, extents, glyph_width, glyph_height, grid_w, grid_h, min_sdf, max_sdf);
 
 	return data;
 }
 
+interface TexData {
+	index_tex: Uint16Array, // 字节数 = 像素个数
+	data_tex: Uint8Array,   // 字节数 = 像素个数 * 4
+
+	grid_w: number,
+	grid_h: number,
+
+	max_offset: number,
+	min_sdf: number,
+	sdf_step: number,
+}
 // 两张纹理，索引纹理 和 数据纹理
 // 
 // 数据纹理：
 //     32bit: [p.x, p.y, d]
 //     按 数据 去重
 // 索引纹理：共 grid_w * grid_h 个像素，每像素 2B
+// uniform: [max_offset, min_sdf, sdf_step]
 const encode_to_tex = (data: BlobArc, extents: AABB,
 	glyph_width: number, glyph_height: number,
 	grid_w: number, grid_h: number,
 	min_sdf: number, max_sdf: number
-) => {
+): TexData => {
 
 	let [data_map, data_tex] = encode_data_tex(data, extents, glyph_width, glyph_height);
+
+	let max_offset = data_tex.length / 4;
+	// 计算sdf的 梯度等级
+	let level = Math.floor(2 ** 14 / max_offset) - 1;
+	if (level < 1) {
+		level = 1;
+	}
+	let sdf_range = max_sdf - min_sdf + 0.1;
+	// 量化：将 sdf_range 分成 level 个区间，看 sdf 落在哪个区间
+	let sdf_step = sdf_range / level;
 
 	// 2 * grid_w * grid_h 个 Uint8
 	let indiecs = [];
@@ -301,24 +325,43 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				}
 
 				let offset = map_arc_data.offset;
-				let max_offset = data_tex.length / 4
 				let sdf = unit_arc.side * unit_arc.min_dist;
-				let r = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, max_sdf);
-				indiecs.push(r);
 
-				let r1 = decode_from_uint16(r, min_sdf, max_sdf, max_offset);
-				if (r1.num_points != num_points || r1.offset != offset) {
+				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
+				indiecs.push(encode);
+
+				unit_arc.show = `${num_points}:${sdf_index}`;
+
+				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
+				if (r.num_points !== num_points || r.offset !== offset) {
 					console.error(`encode index error: min_sdf: ${min_sdf}, max_sdf: ${max_sdf}, max_offset: ${max_offset}`);
-					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, r: ${r}`);
-					console.error(`encode index error: decode_from_uint16: num_points: ${r1.num_points}, offset: ${r1.offset}, sdf: ${r1.sdf}`);
+					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, encode: ${encode}`);
+					console.error(`encode index error: decode_from_uint16: num_points: ${r.num_points}, offset: ${r.offset}, sdf: ${r.sdf}`);
 					console.error(``);
 				}
 			}
 		}
 	}
-	return indiecs;
+
+	data.show += `<br> min_sdf = ${min_sdf.toFixed(2)}, max_sdf = ${max_sdf.toFixed(2)}, max_offset = ${max_offset}, sdf_step = ${sdf_step.toFixed(2)} <br>`;
+
+	return {
+		index_tex: new Uint16Array(indiecs),
+		data_tex,
+
+		// unitform
+
+		grid_w,
+		grid_h,
+
+		max_offset,
+
+		min_sdf,
+		sdf_step,
+	}
 }
 
+// 返回 [encode, sdf_index]
 const encode_to_uint16 = (
 	num_points: number,  // 只有 0，1，2，3 四个值
 
@@ -327,21 +370,8 @@ const encode_to_uint16 = (
 
 	sdf: number,         // 浮点数，介于 [min_sdf, max_sdf] 之间
 	min_sdf: number,     // sdf 的 最小值, 为负数表示内部
-	max_sdf: number,      // sdf 的 最大值, 为负数表示内部
-) => {
-	max_offset += 1;
-
-	// [0, level)
-	let level = Math.floor(2 ** 14 / max_offset) - 1;
-	if (level < 1) {
-		level = 1;
-	}
-
-	let sdf_range = max_sdf - min_sdf + 0.1;
-
-	// 量化：将 sdf_range 分成 level 个区间，看 sdf 落在哪个区间
-	let sdf_step = sdf_range / level;
-
+	sdf_step: number,
+): [number, number] => {
 	// 以区间的索引作为sdf的编码
 	let sdf_index = Math.floor((sdf - min_sdf) / sdf_step);
 
@@ -351,27 +381,18 @@ const encode_to_uint16 = (
 
 	let r = (num_points << 14) | sdf_and_offset_index;
 	r = r & 0xffff;
-	return r;
+	return [r, sdf_index];
 }
 
 const decode_from_uint16 = (
 	value: number,
-	min_sdf: number,
-	max_sdf: number,
 	max_offset: number,
-) => {
-	max_offset += 1;
+	min_sdf: number,
+	sdf_step: number,
 
+) => {
 	let num_points = value >> 14;
 	let sdf_and_offset_index = value & ((1 << 14) - 1);
-
-	let level = Math.floor(2 ** 14 / max_offset) - 1;
-	if (level < 1) {
-		level = 1;
-	}
-
-	let sdf_range = max_sdf - min_sdf + 0.1;
-	let sdf_step = sdf_range / level;
 
 	let sdf_index = Math.floor(sdf_and_offset_index / max_offset);
 	let offset = sdf_and_offset_index % max_offset;
@@ -410,8 +431,6 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 		after_size += value.data.length;
 	}
 
-	data.before_pixels = before_size;
-
 	let r = [];
 	for (let unit_arc of map.values()) {
 		unit_arc.offset = r.length / 4;
@@ -428,7 +447,7 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 		}
 	}
 
-	data.after_pixels = r.length / 4;
+	data.show += `<br>数据纹理 像素数量: before = ${before_size}, after = ${r.length / 4}<br>`;
 
 	let tex_data = new Uint8Array(r);
 

@@ -20,10 +20,8 @@ export class DrawText {
 
     last_arc_count: number;
     last_bezier_count: number;
-    // 宽 * 高
-    last_cell_count: [number, number];
 
-    last_data_texture_pixels: [number, number];
+    last_blob_string: string;
     
     ctx: CanvasRenderingContext2D;
     ttf: string;
@@ -54,8 +52,7 @@ export class DrawText {
 
         this.last_arc_count = 0;
         this.last_bezier_count = 0;
-        this.last_cell_count = [0, 0];
-        this.last_data_texture_pixels = [0, 0];
+        this.last_blob_string = "";
         
         this.ttf = ttf;
         this.ctx = ctx;
@@ -206,12 +203,8 @@ export class DrawText {
         return this.last_bezier_count;
     }
 
-    get_cell_count() {
-        return this.last_cell_count;
-    }
-
-    get_data_texture_pixels() {
-        return this.last_data_texture_pixels;
+    get_blob_string() {
+        return this.last_blob_string;
     }
 
     draw() {
@@ -225,25 +218,12 @@ export class DrawText {
 
             this.last_arc_count = endpoints.length;
             this.last_bezier_count = svg_endpoints.length;
-            this.last_cell_count = [arcs.width_cells, arcs.height_cells];
-            this.last_data_texture_pixels = [arcs.before_pixels, arcs.after_pixels];
+            this.last_blob_string = arcs.show;
 
             console.log(`svg_paths = `, svg_paths);
             console.log(`svg_endpoints = `, svg_endpoints);
             console.log(`endpoints = `, endpoints);
             console.log(`arcs = `, arcs);
-
-            // for (let i = 0; i < arcs.data.length; ++i) {
-            //     let row = arcs.data[i];
-            //     for (let j = 0; j < row.length; ++j) {
-            //         let arc = row[j];
-            //         let eps = arc.data;
-            //         console.log(`grid(${i}, ${j}):`)
-            //         for (let ep of eps) {
-            //             console.log(`  side = ${arc.side}, ep = (${ep.p.x}, ${ep.p.y}, ${ep.d})`);
-            //         }
-            //     }
-            // }
 
             this.clear();
 
@@ -320,10 +300,11 @@ export class DrawText {
                 let posY = (j + 0.5) * cellSize;
                 let unit = arcs.data[j][i];
 
-                let text = unit.data.length.toString();
-                if (unit.side < 0 && unit.data.length === 0) {
-                    text = "-1";
-                }
+                let text = unit.show;
+                // let text = unit.data.length.toString();
+                // if (unit.side < 0 && unit.data.length === 0) {
+                //     text = "-1";
+                // }
 
                 ctx.save();
                 ctx.scale(1, -1);

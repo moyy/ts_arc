@@ -47,17 +47,10 @@ document.addEventListener('DOMContentLoaded', (_) => {
         }
     }
 
-    const cellCountElement = document.getElementById('cell_count') as HTMLElement;
-    const setCellCount = (width: number, height: number) => {
-        if (cellCountElement) {
-            cellCountElement.innerHTML = `width = ${width}, height = ${height}`
-        }
-    }
-
     const dataTexturePixelsElement = document.getElementById('data_texture_pixels') as HTMLElement;
-    const setDataTexturePixel = (before: number, after: number) => {
+    const setDataTexturePixel = (show: string) => {
         if (dataTexturePixelsElement) {
-            dataTexturePixelsElement.innerHTML = `before = ${before}, after = ${after}`;
+            dataTexturePixelsElement.innerHTML = show;
         }
     }
 
@@ -67,9 +60,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
         setTimeout(() => {
             setArcCount(dt.get_arc_count());
             setBezierCount(dt.get_bezier_count());
-
-            setCellCount(...dt.get_cell_count());
-            setDataTexturePixel(...dt.get_data_texture_pixels());
+            setDataTexturePixel(dt.get_blob_string());
         }, 1);
     };
 
