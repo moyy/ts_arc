@@ -7,7 +7,7 @@ import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
  * 
  * TODO 和 shader 的 sdf 进行 同步
  */
-export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => {
+export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [number, ArcEndpoint[]] => {
     let num_endpoints = endpoints.length;
 
     let c = p.clone(); 
@@ -19,7 +19,7 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
 
     // 影响 min_dist 的 端点
     let last_ep = null;
-    let effect_endpoints = []
+    let effect_endpoints: ArcEndpoint[] = []
 
     for (let i = 0; i < num_endpoints; i++) {
         let endpoint = endpoints[i];
@@ -41,7 +41,14 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
             let udist = Math.abs(sdist) * (1 - GLYPHY_EPSILON);
             if (udist <= min_dist) {
                 min_dist = udist;
-                effect_endpoints = [last_ep, endpoint];
+                if (last_ep == null) {
+                    throw new Error("1 last_ep == null");
+                }
+                let lp: ArcEndpoint = {
+                    d: GLYPHY_INFINITY,
+                    p: last_ep.p
+                };
+                effect_endpoints = [lp, endpoint];
                 side = sdist >= 0 ? -1 : +1;
             }
         } else {
@@ -52,8 +59,15 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
                 min_dist = udist;
                 side = 0; /* unsure */
                 closest_arc = arc;
-
-                effect_endpoints = [last_ep, endpoint];
+                
+                if (last_ep == null) {
+                    throw new Error("2 last_ep == null");
+                }
+                let lp: ArcEndpoint = {
+                    d: GLYPHY_INFINITY,
+                    p: last_ep.p
+                };
+                effect_endpoints = [lp, endpoint];
 
             } else if (side == 0 && udist == min_dist) {
                 /* If this new distance is the same as the current minimum,
@@ -81,5 +95,5 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point) => 
         side = ext_dist >= 0 ? +1 : -1;
     }
 
-    return side * min_dist;
+    return [side * min_dist, effect_endpoints];
 }

@@ -16,8 +16,7 @@ const MAX_Y = 4095;
 export interface UnitArc {
 	offset: number, // 此单元（去重后）在数据纹理中的 像素偏移（不是字节偏移）；
 
-	side: number, // 1 外；-1 内
-	min_dist: number, // 方格中心对应的sdf
+	sdf: number, // 方格中心对应的sdf
 
 	show: string, // 用于Canvas显示的字符串
 
@@ -58,7 +57,7 @@ export const closest_arcs_to_cell = (
 
 	// 输出参数
 	near_endpoints: ArcEndpoint[],
-): [number, number] => {
+): number => {
 	let num_endpoints = endpoints.length;
 
 	// This can be improved:
@@ -68,7 +67,7 @@ export const closest_arcs_to_cell = (
 	// cell 的 中心
 	let c = c0.midpoint(c1);
 	// 所有的 圆弧到 中心 的 距离
-	let min_dist = glyphy_sdf_from_arc_list(endpoints, c);
+	let [min_dist, effect_endpoints] = glyphy_sdf_from_arc_list(endpoints, c);
 
 	let side = min_dist >= 0 ? +1 : -1;
 	min_dist = Math.abs(min_dist);
@@ -122,7 +121,7 @@ export const closest_arcs_to_cell = (
 		p1 = arc.p1;
 	}
 
-	return [side, min_dist];
+	return side * min_dist;
 }
 
 
@@ -194,8 +193,7 @@ export const glyphy_arc_list_encode_blob2 = (
 
 			let unit_arc: UnitArc = {
 				offset: 0,
-				side: 1,
-				min_dist: 0,
+				sdf: 0,
 				show: "",
 				data: [],
 			};
@@ -207,7 +205,7 @@ export const glyphy_arc_list_encode_blob2 = (
 			near_endpoints.length = 0;
 
 			// 判断 每个 格子 最近的 圆弧
-			let [side, min_dist] = closest_arcs_to_cell(
+			let sdf = closest_arcs_to_cell(
 				cp0, cp1,
 				faraway,
 				enlighten_max,
@@ -215,8 +213,7 @@ export const glyphy_arc_list_encode_blob2 = (
 				endpoints,
 				near_endpoints
 			);
-			unit_arc.side = side;
-			unit_arc.min_dist = min_dist;
+			unit_arc.sdf = sdf;
 
 			// 线段，终点的 d = 0
 			if (near_endpoints.length == 2 && near_endpoints[1].d == 0) {
@@ -325,7 +322,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				}
 
 				let offset = map_arc_data.offset;
-				let sdf = unit_arc.side * unit_arc.min_dist;
+				let sdf = unit_arc.sdf;
 
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
 				indiecs.push(encode);
@@ -547,7 +544,7 @@ const travel_data = (blob: BlobArc) => {
 
 		let [i, j, unit_arc] = d;
 
-		let curr_dist = unit_arc.side * unit_arc.min_dist;
+		let curr_dist = unit_arc.sdf;
 
 		if (curr_dist < min_sdf) {
 			min_sdf = curr_dist;
@@ -560,22 +557,22 @@ const travel_data = (blob: BlobArc) => {
 		for (let [ii, jj] of neibors) {
 			let neibor_arc = blob.data[ii][jj];
 
-			let new_dist = unit_arc.side * unit_arc.min_dist;
+			let new_dist = unit_arc.sdf;
 			new_dist += blob.cell_size * Math.sqrt((ii - i) ** 2 + (jj - j) ** 2);
 
 			if (neibor_arc.data.length === 0) {
 				/// 没数据，就复制当前的过去
 				if (!origin_map.has(`(${ii},${jj})`)) {
 					neibor_arc.data = unit_arc.data;
-					neibor_arc.min_dist = new_dist;
+					neibor_arc.sdf = new_dist;
 					queue.push([ii, jj, neibor_arc]);
 				}
 			} else {
 				// 有数据，而且 旧数据 比 new_dist 大，就更新
-				if (neibor_arc.min_dist > new_dist) {
+				if (neibor_arc.sdf > new_dist) {
 					if (!origin_map.has(`(${ii},${jj})`)) {
 						neibor_arc.data = unit_arc.data;
-						neibor_arc.min_dist = new_dist;
+						neibor_arc.sdf = new_dist;
 						queue.push([ii, jj, neibor_arc]);
 					}
 				}
