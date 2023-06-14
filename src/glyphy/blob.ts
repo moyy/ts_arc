@@ -57,7 +57,7 @@ export const closest_arcs_to_cell = (
 
 	// 输出参数
 	near_endpoints: ArcEndpoint[],
-): number => {
+): [number, ArcEndpoint[]] => {
 	let num_endpoints = endpoints.length;
 
 	// This can be improved:
@@ -121,7 +121,7 @@ export const closest_arcs_to_cell = (
 		p1 = arc.p1;
 	}
 
-	return side * min_dist;
+	return [side * min_dist, effect_endpoints];
 }
 
 
@@ -205,7 +205,7 @@ export const glyphy_arc_list_encode_blob2 = (
 			near_endpoints.length = 0;
 
 			// 判断 每个 格子 最近的 圆弧
-			let sdf = closest_arcs_to_cell(
+			let [sdf, effect_endpoints] = closest_arcs_to_cell(
 				cp0, cp1,
 				faraway,
 				enlighten_max,
@@ -236,6 +236,10 @@ export const glyphy_arc_list_encode_blob2 = (
 				near_endpoints.push(e0);
 				near_endpoints.push(e1);
 				near_endpoints.push(e2);
+			}
+
+			if (near_endpoints.length === 0) {
+				near_endpoints = effect_endpoints;
 			}
 
 			// 编码到纹理：该格子 对应 的 圆弧数据
@@ -280,6 +284,7 @@ interface TexData {
 	min_sdf: number,
 	sdf_step: number,
 }
+
 // 两张纹理，索引纹理 和 数据纹理
 // 
 // 数据纹理：
@@ -327,7 +332,8 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
 				indiecs.push(encode);
 
-				unit_arc.show = `${num_points}:${sdf_index}`;
+				// unit_arc.show = `${num_points}:${sdf_index}`;
+				unit_arc.show = `${sdf_index}:${sdf.toFixed(1)}`;
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
 				if (r.num_points !== num_points || r.offset !== offset) {
@@ -340,7 +346,15 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 		}
 	}
 
-	data.show += `<br> min_sdf = ${min_sdf.toFixed(2)}, max_sdf = ${max_sdf.toFixed(2)}, max_offset = ${max_offset}, sdf_step = ${sdf_step.toFixed(2)} <br>`;
+	let cell_size = data.cell_size;
+	data.show += `<br> var max_offset = ${max_offset}, min_sdf = ${min_sdf.toFixed(2)}, max_sdf = ${max_sdf.toFixed(2)}, sdf_step = ${sdf_step.toFixed(2)}, cell_size = ${cell_size.toFixed(2)} <br>`;
+
+	let level_sdf = [];
+	for (let i = 0; i < level; i++) {
+		let sdf = min_sdf + sdf_step * i;
+		level_sdf.push(sdf.toFixed(2));
+	}
+	data.show += `<br> sdf_level: ${level_sdf.join(", ")} <br>`;
 
 	return {
 		index_tex: new Uint16Array(indiecs),
@@ -516,66 +530,21 @@ const arc_endpoint_encode = (ix: number, iy: number, d: number): [number, number
 }
 
 const travel_data = (blob: BlobArc) => {
-	let queue: [number, number, UnitArc][] = [];
-
-	// 记住那些坐标是原始数据的坐标
-	// 键是 (i, j)
-	let origin_map = new Set<string>();
+	let min_sdf = Infinity;
+	let max_sdf = -Infinity;
 
 	// 初始化队列
 	for (let i = 0; i < blob.data.length; ++i) {
 		let row = blob.data[i];
 		for (let j = 0; j < row.length; ++j) {
 			let unit_arc = row[j];
-			if (unit_arc.data.length > 0) {
-				origin_map.add(`(${i},${j})`);
-				queue.push([i, j, unit_arc]);
+			let curr_dist = unit_arc.sdf;
+
+			if (curr_dist < min_sdf) {
+				min_sdf = curr_dist;
 			}
-		}
-	}
-
-	let min_sdf = Infinity;
-	let max_sdf = -Infinity;
-	while (queue.length > 0) {
-		let d = queue.shift();
-		if (!d) {
-			continue;
-		}
-
-		let [i, j, unit_arc] = d;
-
-		let curr_dist = unit_arc.sdf;
-
-		if (curr_dist < min_sdf) {
-			min_sdf = curr_dist;
-		}
-		if (curr_dist > max_sdf) {
-			max_sdf = curr_dist;
-		}
-
-		let neibors = get_neibor(blob, i, j);
-		for (let [ii, jj] of neibors) {
-			let neibor_arc = blob.data[ii][jj];
-
-			let new_dist = unit_arc.sdf;
-			new_dist += blob.cell_size * Math.sqrt((ii - i) ** 2 + (jj - j) ** 2);
-
-			if (neibor_arc.data.length === 0) {
-				/// 没数据，就复制当前的过去
-				if (!origin_map.has(`(${ii},${jj})`)) {
-					neibor_arc.data = unit_arc.data;
-					neibor_arc.sdf = new_dist;
-					queue.push([ii, jj, neibor_arc]);
-				}
-			} else {
-				// 有数据，而且 旧数据 比 new_dist 大，就更新
-				if (neibor_arc.sdf > new_dist) {
-					if (!origin_map.has(`(${ii},${jj})`)) {
-						neibor_arc.data = unit_arc.data;
-						neibor_arc.sdf = new_dist;
-						queue.push([ii, jj, neibor_arc]);
-					}
-				}
+			if (curr_dist > max_sdf) {
+				max_sdf = curr_dist;
 			}
 		}
 	}
