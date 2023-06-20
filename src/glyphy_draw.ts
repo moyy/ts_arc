@@ -4,7 +4,8 @@ import { Arc, ArcEndpoint } from "glyphy/geometry/arc.js";
 import { GlyphyArcAccumulator } from "glyphy/geometry/arcs";
 import { Point } from "glyphy/geometry/point.js";
 import { glyphy_outline_winding_from_even_odd } from "glyphy/outline.js";
-import { GLYPHY_INFINITY, assert } from "glyphy/util";
+import { GLYPHY_INFINITY, assert } from "glyphy/util.js";
+import { GlyphInfo } from "glyphy/vertex.js";
 import * as opentype from "opentype.js";
 
 const MIN_FONT_SIZE = 10;
@@ -19,6 +20,7 @@ const EMBOLDEN_MAX = 0.012; /* Per EM */
 // 实现 encode_ft_glyph
 //
 export const get_char_arc = (
+    gi: GlyphInfo,
     font: opentype.Font,
     char: string,
     tolerance_per_em = TOLERANCE
@@ -78,6 +80,12 @@ export const get_char_arc = (
 
     extents.scale(1.0 / upem, 1.0 / upem);
 
+    gi.nominal_w = arcs.width_cells;
+    gi.nominal_h = arcs.height_cells;
+
+    gi.extents.set(extents);
+
+    
     return { svg_paths, svg_endpoints, arcs, endpoints };
 };
 

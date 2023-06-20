@@ -1,16 +1,23 @@
 {
-    "compilerOptions": {
-      "target": "es2015",
-      "lib": ["dom", "es2015"],
-      "module": "esnext",
-      "strict": true,
-      "outDir": "dist",
-      "baseUrl": "./",
-      "paths": {
-        "*": ["src/*"]
-      },
-      "esModuleInterop": true
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "esnext",
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "module": "esnext",
+    "strict": true,
+    "outDir": "dist",
+    "baseUrl": "./",
+    "paths": {
+      "*": [
+        "src/*"
+      ]
     },
-    "include": ["src/**/*"]
-  }
-  
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

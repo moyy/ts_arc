@@ -1,5 +1,6 @@
 import { BlobArc } from 'glyphy/blob.js';
 import { ArcEndpoint } from 'glyphy/geometry/arc.js';
+import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
 import { get_char_arc, to_arc_cmds } from 'glyphy_draw.js';
 import * as opentype from 'opentype.js';
 
@@ -22,7 +23,7 @@ export class DrawText {
     last_bezier_count: number;
 
     last_blob_string: string;
-    
+
     ctx: CanvasRenderingContext2D;
     ttf: string;
     text: string;
@@ -53,7 +54,7 @@ export class DrawText {
         this.last_arc_count = 0;
         this.last_bezier_count = 0;
         this.last_blob_string = "";
-        
+
         this.ttf = ttf;
         this.ctx = ctx;
         this.font = null;
@@ -207,14 +208,19 @@ export class DrawText {
         return this.last_blob_string;
     }
 
-    draw() {
+    draw(font_size = 32) {
         if (!this.font) {
             this.font = this.load();
         }
 
         this.font.then(font => {
             let size = font.unitsPerEm;
-            let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(font, this.text)
+            let gi = new GlyphInfo();
+            let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(gi, font, this.text)
+
+            let verties = add_glyph_vertices(font_size, gi);
+
+            console.log(`verties = `, verties);
 
             this.last_arc_count = endpoints.length;
             this.last_bezier_count = svg_endpoints.length;

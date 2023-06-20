@@ -1,5 +1,5 @@
+import { SdfContext } from "sdf/draw_sdf.js";
 import { DrawText } from "./draw_text.js"
-
 
 document.addEventListener('DOMContentLoaded', (_) => {
     if (document === null) {
@@ -7,21 +7,28 @@ document.addEventListener('DOMContentLoaded', (_) => {
         return;
     }
 
-    let canvas = document.getElementById('myCanvas');
-    if (!canvas) {
-        alert("Failed to get canvas!");
+    let c = document.getElementById('sdf-canvas') as HTMLCanvasElement;
+    if (!c) {
+        alert("Failed to get sdf-canvas!");
+        return;
+    }
+    let sdfContext = new SdfContext(c);
+    sdfContext.draw();
+
+    c = document.getElementById('font-canvas') as HTMLCanvasElement;
+    if (!c) {
+        alert("Failed to get font-canvas!");
+        return;
+    }
+    let fontCanvas = c;
+    const fontContext = fontCanvas.getContext('2d');
+    if (!fontContext) {
+        alert("Failed to get font-canvas context!");
         return;
     }
 
-    let c = canvas as HTMLCanvasElement;
-    const context = c.getContext('2d');
-    if (!context) {
-        alert("Failed to get canvas context!");
-        return;
-    }
-
-    c.addEventListener('mousedown', (event) => {
-        let rect = c.getBoundingClientRect();
+    fontCanvas.addEventListener('mousedown', (event) => {
+        let rect = fontCanvas.getBoundingClientRect();
         let x = event.clientX - rect.left;
         let y = event.clientY - rect.top;
 
@@ -54,7 +61,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
         }
     }
 
-    let dt = new DrawText(context, "font/msyh.ttf");
+    let dt = new DrawText(fontContext, "font/msyh.ttf");
 
     const afterDraw = () => {
         setTimeout(() => {
@@ -184,7 +191,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
     });
 
     dt.set_init_pos(300, 2100);
-    dt.set_init_size(c.width, c.height);
+    dt.set_init_size(fontCanvas.width, fontCanvas.height);
     dt.draw();
 
     afterDraw();

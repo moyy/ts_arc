@@ -178,6 +178,7 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	let cell_unit = unit / Math.max(grid_w, grid_h);
 
+	// TODO 顶点坐标
 
 	// 每个 格子的 最近的 圆弧
 	let near_endpoints: ArcEndpoint[] = [];
