@@ -1,4 +1,5 @@
 import { SdfContext } from "sdf/draw_sdf.js";
+import { set_gl } from "sdf/glyph.js";
 import { DrawText } from "./draw_text.js"
 
 document.addEventListener('DOMContentLoaded', (_) => {
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
         return;
     }
     let sdfContext = new SdfContext(c);
+    set_gl(sdfContext.gl);
     sdfContext.draw();
 
     c = document.getElementById('font-canvas') as HTMLCanvasElement;
@@ -65,6 +67,8 @@ document.addEventListener('DOMContentLoaded', (_) => {
 
     const afterDraw = () => {
         setTimeout(() => {
+            sdfContext.setChar(dt.get_char());
+
             setArcCount(dt.get_arc_count());
             setBezierCount(dt.get_bezier_count());
             setDataTexturePixel(dt.get_blob_string());
@@ -73,10 +77,10 @@ document.addEventListener('DOMContentLoaded', (_) => {
 
     const charElement = document.getElementById('char') as HTMLInputElement
     const charValue = charElement ? charElement.value : "A";
-    dt.set_text(charValue);
+    dt.set_char(charValue);
     charElement.addEventListener('input', function (event) {
         let target = event.target as HTMLInputElement;
-        dt.set_text(target.value);
+        dt.set_char(target.value);
         dt.draw();
 
         afterDraw();

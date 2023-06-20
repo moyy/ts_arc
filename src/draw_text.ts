@@ -3,6 +3,7 @@ import { ArcEndpoint } from 'glyphy/geometry/arc.js';
 import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
 import { get_char_arc, to_arc_cmds } from 'glyphy_draw.js';
 import * as opentype from 'opentype.js';
+import { set_glyph } from 'sdf/glyph.js';
 
 /**
  * + 填充规则：奇偶规则
@@ -26,7 +27,7 @@ export class DrawText {
 
     ctx: CanvasRenderingContext2D;
     ttf: string;
-    text: string;
+    char: string;
     font: Promise<opentype.Font> | null;
 
     last_arcs: BlobArc | null;
@@ -58,7 +59,7 @@ export class DrawText {
         this.ttf = ttf;
         this.ctx = ctx;
         this.font = null;
-        this.text = "A";
+        this.char = "A";
 
         this.last_arcs = null;
 
@@ -122,11 +123,15 @@ export class DrawText {
         this.is_endpoint_arc = is_endpoint;
     }
 
-    set_text(char: string) {
-        this.text = char;
+    set_char(char: string) {
+        this.char = char[0];
         if (!this.font) {
             this.font = this.load()
         }
+    }
+
+    get_char() {
+        return this.char;
     }
 
     clear() {
@@ -216,11 +221,16 @@ export class DrawText {
         this.font.then(font => {
             let size = font.unitsPerEm;
             let gi = new GlyphInfo();
-            let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(gi, font, this.text)
+            let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(gi, font, this.char)
 
             let verties = add_glyph_vertices(font_size, gi);
-
             console.log(`verties = `, verties);
+
+            let tex_data = arcs.tex_data;
+            if (!tex_data) {
+                throw new Error(`tex_data is null`);
+            }
+            set_glyph(this.char, verties, tex_data);
 
             this.last_arc_count = endpoints.length;
             this.last_bezier_count = svg_endpoints.length;

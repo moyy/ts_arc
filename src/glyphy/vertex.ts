@@ -26,7 +26,7 @@ export class GlyphInfo {
 	}
 };
 
-export interface GlyphVertex {
+export interface GlyphyVertex {
 
 	// 位置信息
 	// 就是 该字符 包围盒 对应 的 位置
@@ -55,8 +55,8 @@ export const add_glyph_vertices = (
 	font_size: number,
 	gi: GlyphInfo,
 	extents: AABB | null = null,
-): GlyphVertex[] => {
-	let r: GlyphVertex[] = []
+): GlyphyVertex[] => {
+	let r: GlyphyVertex[] = []
 
 	r.push(encode_corner(0, 0, gi, font_size))
 	r.push(encode_corner(0, 1, gi, font_size));
@@ -88,7 +88,7 @@ const encode_corner = (cx: number, cy: number, gi: GlyphInfo, font_size: number)
 const glyph_vertex_encode = (
 	x: number, y: number,
 	corner_x: number, corner_y: number, // 0 代表 左/上，1代表 右/下
-	gi: GlyphInfo): GlyphVertex => {
+	gi: GlyphInfo): GlyphyVertex => {
 
 	let encoded = glyph_encode(
 		gi.atlas_x, gi.atlas_y,

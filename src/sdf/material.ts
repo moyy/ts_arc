@@ -8,9 +8,12 @@ export class Material {
         this.program = null;
     }
 
+    clone(): Material {
+        return new Material();
+    }
+
     use(
         gl: WebGLRenderingContext,
         camera: Camera) {
-
     }
 }

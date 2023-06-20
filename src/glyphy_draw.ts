@@ -85,7 +85,7 @@ export const get_char_arc = (
 
     gi.extents.set(extents);
 
-    
+    arcs.tex_data
     return { svg_paths, svg_endpoints, arcs, endpoints };
 };
 

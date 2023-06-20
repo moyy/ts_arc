@@ -29,6 +29,8 @@ export interface BlobArc {
 	width_cells: number,
 	height_cells: number,
 
+	tex_data: null | TexData,
+
 	// 显示
 	show: string,
 
@@ -148,6 +150,8 @@ export const glyphy_arc_list_encode_blob2 = (
 
 			show: "",
 
+			tex_data: null,
+
 			extents: extents.clone(),
 			data: [],
 			avg_fetch_achieved: 0,
@@ -253,12 +257,14 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	pextents.set(extents);
 
-	let data = {
+	let data: BlobArc = {
 		cell_size: cell_unit,
 		width_cells: grid_w,
 		height_cells: grid_h,
 
 		show: "",
+		
+		tex_data: null,
 
 		data: result_arcs,
 		extents: extents.clone(),
@@ -269,12 +275,12 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	data.show += `<br> 格子数：宽 = ${grid_w}, 高 = ${grid_h} <br>`;
 
-	encode_to_tex(data, extents, glyph_width, glyph_height, grid_w, grid_h, min_sdf, max_sdf);
+	data.tex_data = encode_to_tex(data, extents, glyph_width, glyph_height, grid_w, grid_h, min_sdf, max_sdf);
 
 	return data;
 }
 
-interface TexData {
+export interface TexData {
 	index_tex: Uint16Array, // 字节数 = 像素个数
 	data_tex: Uint8Array,   // 字节数 = 像素个数 * 4
 

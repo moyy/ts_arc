@@ -1,3 +1,4 @@
+
 // Shader 管理器
 export class ProgramManager {
 
@@ -7,13 +8,8 @@ export class ProgramManager {
 
     programMap: Map<string, Program>;
 
-    static _instance: null | ProgramManager = null;
-
     static getInstance() {
-        if (!ProgramManager._instance) {
-            ProgramManager._instance = new ProgramManager();
-        }
-        return ProgramManager._instance;
+        return instance;
     }
 
     constructor() {
@@ -163,3 +159,5 @@ Promise.resolve().then(() => {
     
     import("./glyphy.fs.js");
 })
+
+let instance = new ProgramManager();

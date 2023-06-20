@@ -1,16 +1,16 @@
-import { GlyphInfo } from "glyphy/vertex.js";
 import { Camera } from "./camera.js";
-import { Mesh } from "./mesh.js";
+import { get_glyph } from "./glyph.js";
 import { ProgramManager } from "./program.js";
 
 export class SdfContext {
-    mesh: null | Mesh;
+    char: string;
     camera: Camera;
-    
+
     canvas: HTMLCanvasElement;
     gl: WebGLRenderingContext;
 
     constructor(canvas: HTMLCanvasElement) {
+        console.warn("++++++++++++++++++++++++ SdfContext constructor");
         let gl = canvas.getContext("webgl", {
             antialias: false,
             alpha: false,
@@ -20,7 +20,7 @@ export class SdfContext {
         }
 
         this.gl = gl;
-        this.mesh = null;
+        this.char = "";
         this.canvas = canvas;
         this.camera = new Camera();
         this.init();
@@ -43,6 +43,7 @@ export class SdfContext {
         let gl = this.gl;
 
         let ratio = window.devicePixelRatio;
+
         let w = Math.round(ratio * this.canvas.clientWidth);
         let h = Math.round(ratio * this.canvas.clientHeight);
 
@@ -53,31 +54,38 @@ export class SdfContext {
         }
 
         this.camera.setSize(w, h);
-        
+
         gl.viewport(0, 0, w, h);
         gl.scissor(0, 0, w, h);
     }
 
-    setCharInfo(char: string, font_size: number, gi: GlyphInfo, index_texture: Uint16Array, data_texture: Uint8Array) {
-        
+    setChar(char: string) {
+        this.char = char;
     }
 
     drawChar() {
         let gl = this.gl;
 
+        if (!this.char) {
+            return;
+        }
+
+        let glyph = get_glyph(this.char);
+        if (!glyph) {
+            return;
+        }
+
         this.setSize();
-        
+
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        if (this.mesh) {
-            this.mesh.draw(gl, this.camera);   
-        }
+        glyph.draw(gl, this.camera);
     }
 
     draw() {
         this.drawChar();
-        
+
         let that = this;
         requestAnimationFrame(() => {
             that.draw();
@@ -88,9 +96,9 @@ export class SdfContext {
         let gl = this.gl;
 
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        
+
         gl.disable(gl.DEPTH_TEST);
-        
+
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
