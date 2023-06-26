@@ -1,19 +1,29 @@
 import { ProgramManager } from "./program.js";
 
 ProgramManager.getInstance().addShader("glyphy.fs", `
-
 	#extension GL_OES_standard_derivatives : enable
 
 	precision highp float;
 
 	// ================ begin demo-atlas.glsl
 
-	uniform sampler2D u_atlas_tex;
-	uniform ivec4 u_atlas_info;
+	// (max_offset, min_sdf, sdf_step)
+	uniform vec3 u_info;
+
+	uniform sampler2D u_index_tex;
+
+	uniform sampler2D u_data_tex;
 	
-	// atlas_info = (纹理宽, 纹理高, 单元格宽, 单元格高) 
-	vec4 glyphy_texture1D_func(int offset, sampler2D tex, ivec4 atlas_info, ivec2 atlas_pos)
-	{
+	// (grid_w, grid_h, item_w, item_h_q)
+	// (纹理宽, 纹理高, 单元格宽, 单元格高) 
+	uniform ivec4 u_index_info;
+	
+	vec4 glyphy_texture1D_func(
+		int offset, 
+		sampler2D tex, 
+		ivec4 atlas_info, 
+		ivec2 atlas_pos
+	) {
 		ivec2 item_geom = atlas_info.zw;
 	
 		// 将 1D 坐标 化成 2D 坐标，宽度是 item_geom.x 
@@ -417,6 +427,10 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 
 		// 纹理头部的 索引 
 		ivec2 atlas_pos;
+
+		float sdf;
+
+		
 	};
 
 	// 解码 
@@ -454,7 +468,7 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 		glyph_info_t gi = glyph_info_decode(v_glyph.zw);
 	
 		// 重点：计算 SDF 
-		float gsdist = glyphy_sdf(p, gi.nominal_size, u_atlas_tex, u_atlas_info, gi.atlas_pos);
+		float gsdist = glyphy_sdf(p, gi.nominal_size, u_index_tex, u_index_info, gi.atlas_pos);
 
 		// 均匀缩放 
 		float scale = SQRT2 / length(fwidth(p));

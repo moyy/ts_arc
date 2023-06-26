@@ -297,8 +297,8 @@ export interface TexData {
 // 数据纹理：
 //     32bit: [p.x, p.y, d]
 //     按 数据 去重
-// 索引纹理：共 grid_w * grid_h 个像素，每像素 2B
-// uniform: [max_offset, min_sdf, sdf_step]
+//素，每像素 2B
+// uniform: [max_offset, min_sdf,  索引纹理：共 grid_w * grid_h 个像sdf_step]
 const encode_to_tex = (data: BlobArc, extents: AABB,
 	glyph_width: number, glyph_height: number,
 	grid_w: number, grid_h: number,
