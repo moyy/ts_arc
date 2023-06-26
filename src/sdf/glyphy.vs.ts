@@ -8,8 +8,8 @@ ProgramManager.getInstance().addShader("glyphy.vs", `
     uniform mat4 uView;
     uniform mat4 uProj;
 
-    // struct glyph_vertex_t {
-    // x, y; g16hi, g16lo;
+    // glyph_vertex_t: x, y; g16hi, g16lo; 
+    
     attribute vec4 a_glyph_vertex;
 
     varying vec4 v_glyph;

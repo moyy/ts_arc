@@ -52,8 +52,8 @@ export interface GlyphyVertex {
  *	  - 纹理信息: 纹理 起始位置, corner_x/corner_y, 格子个数（宽，高）
  */
 export const add_glyph_vertices = (
-	font_size: number,
 	gi: GlyphInfo,
+	font_size = 1.0,
 	extents: AABB | null = null,
 ): GlyphyVertex[] => {
 	let r: GlyphyVertex[] = []
@@ -62,6 +62,8 @@ export const add_glyph_vertices = (
 	r.push(encode_corner(0, 1, gi, font_size));
 	r.push(encode_corner(1, 0, gi, font_size));
 	r.push(encode_corner(1, 1, gi, font_size));
+
+	console.warn(`add_glyph_vertices`, r)
 
 	if (extents) {
 		extents.clear();

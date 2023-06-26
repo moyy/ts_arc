@@ -1,3 +1,4 @@
+import { mat4 } from "gl-matrix";
 import { Camera } from "./camera.js";
 import { Program } from "./program.js";
 
@@ -15,5 +16,8 @@ export class Material {
     use(
         gl: WebGLRenderingContext,
         camera: Camera) {
+    }
+
+    setWorldMatrix(m: mat4) {
     }
 }

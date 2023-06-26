@@ -80,6 +80,10 @@ export class Geometry {
 
             let location = program.getAttribute(gl, name);
 
+            if (location === undefined) {
+                throw new Error(`getAttributeLocation failed, name = ${name}`);
+            }
+
             gl.vertexAttribPointer(
                 location,
                 itemSize,

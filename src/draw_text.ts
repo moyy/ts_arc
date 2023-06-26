@@ -1,3 +1,4 @@
+import { mat4 } from 'gl-matrix';
 import { BlobArc } from 'glyphy/blob.js';
 import { ArcEndpoint } from 'glyphy/geometry/arc.js';
 import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
@@ -213,7 +214,7 @@ export class DrawText {
         return this.last_blob_string;
     }
 
-    draw(font_size = 32) {
+    draw(font_size = 128) {
         if (!this.font) {
             this.font = this.load();
         }
@@ -223,14 +224,25 @@ export class DrawText {
             let gi = new GlyphInfo();
             let { svg_paths, svg_endpoints, arcs, endpoints } = get_char_arc(gi, font, this.char)
 
-            let verties = add_glyph_vertices(font_size, gi);
+            let verties = add_glyph_vertices(gi);
             console.log(`verties = `, verties);
 
             let tex_data = arcs.tex_data;
             if (!tex_data) {
                 throw new Error(`tex_data is null`);
             }
-            set_glyph(this.char, verties, tex_data);
+
+            let g = set_glyph(this.char, verties, tex_data);
+            if (!g) {
+                throw new Error(`g is null`);
+            }
+
+            let scale = font_size * window.devicePixelRatio;
+            let m = mat4.create();
+            mat4.identity(m);
+            mat4.translate(m, m, [100, 100, 0.0]);
+            mat4.scale(m, m, [scale, scale, 1.0]);
+            g.mesh?.material?.setWorldMatrix(m);
 
             this.last_arc_count = endpoints.length;
             this.last_bezier_count = svg_endpoints.length;

@@ -263,7 +263,7 @@ export const glyphy_arc_list_encode_blob2 = (
 		height_cells: grid_h,
 
 		show: "",
-		
+
 		tex_data: null,
 
 		data: result_arcs,
@@ -286,6 +286,8 @@ export interface TexData {
 
 	grid_w: number,
 	grid_h: number,
+
+	cell_size: number,
 
 	max_offset: number,
 	min_sdf: number,
@@ -369,6 +371,8 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 		// unitform
 
+		cell_size,
+		
 		grid_w,
 		grid_h,
 
@@ -379,6 +383,9 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 	}
 }
 
+// 返回 u16，从高到低
+// num_points: 2-bit
+// offset + sdf: 14-bit
 // 返回 [encode, sdf_index]
 const encode_to_uint16 = (
 	num_points: number,  // 只有 0，1，2，3 四个值
@@ -402,6 +409,9 @@ const encode_to_uint16 = (
 	return [r, sdf_index];
 }
 
+// value: u16，从高到低
+// num_points: 2-bit
+// offset + sdf: 14-bit
 const decode_from_uint16 = (
 	value: number,
 	max_offset: number,

@@ -128,7 +128,7 @@ export class Program {
         let u = this.uniforms.get(name);
         if (!u) {
             let u1 = gl.getUniformLocation(this.id, name);
-            if(!u1) {
+            if (!u1) {
                 throw new Error(`getUniformLocation failed, name = ${name}`);
             }
 
@@ -143,9 +143,9 @@ export class Program {
         name: string,
     ) {
         let a = this.attributes.get(name);
-        if (!a) {
+        if (typeof a !== typeof 0) {
             a = gl.getAttribLocation(this.id, name);
-            if (!a) {
+            if (typeof a !== typeof 0) {
                 throw new Error(`getAttributeLocation failed, name = ${name}`);
             }
             this.attributes.set(name, a);
@@ -156,7 +156,7 @@ export class Program {
 
 Promise.resolve().then(() => {
     import("./glyphy.vs.js");
-    
+
     import("./glyphy.fs.js");
 })
 

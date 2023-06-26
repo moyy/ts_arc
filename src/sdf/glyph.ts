@@ -88,6 +88,8 @@ export const set_glyph = (
         res = new Glyph(g_gl, char, verties, tex_data);
         map.set(char, res);
     }
+
+    return res;
 }
 
 export const get_glyph = (char: string): null | Glyph => {
@@ -135,7 +137,6 @@ export class GlyphyMaterial extends Material {
 
     setWorldMatrix(m: mat4) {
         this.uWorld = m;
-        this.uWorld = m;
     }
 
     setColor(r: number, g: number, b: number, a: number) {
@@ -156,10 +157,11 @@ export class GlyphyMaterial extends Material {
         let tex_data = this.tex_data;
 
         let u_info = program.getUniform(gl, "u_info");
-        gl.uniform3f(u_info, tex_data.max_offset, tex_data.min_sdf, tex_data.sdf_step);
-        
-        let u_index_info = program.getUniform(gl, "u_index_info");
-        gl.uniform4i(u_index_info, tex_data.grid_w, tex_data.grid_h, item_w, item_h_q);
+
+        // 如果 晶格的 sdf 在 [-check, check]，该晶格 和 字体轮廓 可能 相交 
+        let check = tex_data.cell_size * 0.5 * Math.sqrt(2);
+
+        gl.uniform4f(u_info, tex_data.max_offset, tex_data.min_sdf, tex_data.sdf_step, check);
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.index_texture);
@@ -198,7 +200,7 @@ const createGeometry = (
         vs[3].x, vs[3].y, vs[3].g16hi, vs[3].g16lo,
     ];
 
-    let indices = [0, 1, 2, 0, 2, 3];
+    let indices = [0, 1, 2, 1, 2, 3];
 
     let geometry = new Geometry(gl);
 
@@ -220,7 +222,7 @@ const createDataTexture = (
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.length, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.length / 4, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
 
@@ -240,25 +242,16 @@ const createIndexTexture = (
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tex_w, tex_h, 0, gl.RGBA, gl.UNSIGNED_SHORT_4_4_4_4, null);
-
-    let w = 64;
-    let pixels = data.length / 4;
-    let h = Math.ceil(pixels / w);
-
-    let len = w * h - pixels;
-
-    if (len > 0) {
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h - 1, gl.RGBA, gl.UNSIGNED_SHORT_4_4_4_4, data);
-
-        let data1 = data.slice(4 * w * (h - 1));
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, h - 1, data1.length / 4, 1, gl.RGBA, gl.UNSIGNED_SHORT_4_4_4_4, data1);
-    } else {
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_SHORT_4_4_4_4, data);
+    let data1 = new Uint8Array(2 * tex_w * tex_h);
+    for (let i = 0; i < data.length; i++) {
+        let v = data[i];
+        data1[2 * i] = v & 0xff;
+        data1[2 * i + 1] = (v >> 8) & 0xff;
     }
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, tex_w, tex_h, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, data1);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
 
     return tex;
 }
-
