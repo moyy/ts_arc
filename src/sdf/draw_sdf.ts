@@ -10,7 +10,6 @@ export class SdfContext {
     gl: WebGLRenderingContext;
 
     constructor(canvas: HTMLCanvasElement) {
-        console.warn("++++++++++++++++++++++++ SdfContext constructor");
         let gl = canvas.getContext("webgl", {
             antialias: false,
             alpha: false,
@@ -50,7 +49,7 @@ export class SdfContext {
         if (w !== this.canvas.width || h !== this.canvas.height) {
             this.canvas.width = w;
             this.canvas.height = h;
-            console.warn("========= canvas resize = (" + w + ", " + h + ")");
+            console.log("========= canvas resize = (" + w + ", " + h + ")");
         }
 
         this.camera.setSize(w, h);

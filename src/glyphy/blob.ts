@@ -281,8 +281,8 @@ export const glyphy_arc_list_encode_blob2 = (
 }
 
 export interface TexData {
-	index_tex: Uint16Array, // 字节数 = 像素个数
-	data_tex: Uint8Array,   // 字节数 = 像素个数 * 4
+	index_tex: Uint8Array, // 字节数 = 2 * 像素个数
+	data_tex: Uint8Array,  // 字节数 = 4 * 像素个数
 
 	grid_w: number,
 	grid_h: number,
@@ -330,9 +330,13 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("unit_arc not found");
 				}
 
+				// 注：这里因为没有 端点为1 的 晶格
+				// 所以 num_points 为 2，3，4 编码成了 1，2，3
 				let num_points = map_arc_data.data.length;
-				if (num_points > 3) {
+				if (num_points > 4) {
 					num_points = 0;
+				} else {
+					num_points -= 1;
 				}
 
 				let offset = map_arc_data.offset;
@@ -365,14 +369,20 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 	}
 	data.show += `<br> sdf_level: ${level_sdf.join(", ")} <br>`;
 
+	let index_tex = new Uint8Array(2 * indiecs.length);
+	for (let i = 0; i < indiecs.length; i++) {
+		index_tex[2 * i] = indiecs[i] & 0xff;
+		index_tex[2 * i + 1] = indiecs[i] >> 8;
+	}
+
 	return {
-		index_tex: new Uint16Array(indiecs),
 		data_tex,
+		index_tex,
 
 		// unitform
 
 		cell_size,
-		
+
 		grid_w,
 		grid_h,
 

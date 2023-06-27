@@ -79,7 +79,7 @@ export class DrawText {
     set_mouse_down(x: number, y: number) {
         this.mouse_x = x;
         this.mouse_y = y;
-        console.warn(`mouse down: ${x}, ${y}`);
+        // console.warn(`mouse down: ${x}, ${y}`);
     }
 
     set_init_pos(x: number, y: number) {
@@ -170,7 +170,7 @@ export class DrawText {
         let i = Math.floor(x / cellSize);
         let j = Math.floor(y / cellSize);
 
-        console.warn(`draw_network_endpoints: ${i}, ${j}`);
+        console.log(`draw_network_endpoints: ${i}, ${j}`);
 
         if (j < 0 || j >= this.last_arcs.data.length) {
             return;
@@ -195,7 +195,7 @@ export class DrawText {
 
             // 在端点位置画出黑点
             ctx.beginPath();
-            console.warn(`draw_network_endpoints: ${endpoint.p.x}, ${endpoint.p.y}, d = ${endpoint.d}`);
+            console.log(`draw_network_endpoints: ${endpoint.p.x}, ${endpoint.p.y}, d = ${endpoint.d}`);
             ctx.arc(endpoint.p.x, endpoint.p.y, 20, 0, 2 * Math.PI);
             ctx.fill();
         }
@@ -351,7 +351,7 @@ export class DrawText {
         let [cmds, pts] = to_arc_cmds(endpoints);
 
         console.log("")
-        console.warn(`============== 04. 圆弧`);
+        console.log(`============== 04. 圆弧`);
         for (let cmd_array of cmds) {
             for (let cmd of cmd_array) {
                 console.log(`    ${cmd}`);

@@ -222,6 +222,11 @@ const createDataTexture = (
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
+    console.warn(`createDataTexture: ${data.length}`)
+
+    gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.length / 4, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -233,7 +238,7 @@ const createIndexTexture = (
     gl: WebGLRenderingContext,
     tex_w: number,
     tex_h: number,
-    data: Uint16Array,
+    data: Uint8Array, // 2 * tex_w * tex_h
 ) => {
     let tex = gl.createTexture();
 
@@ -242,14 +247,12 @@ const createIndexTexture = (
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    let data1 = new Uint8Array(2 * tex_w * tex_h);
-    for (let i = 0; i < data.length; i++) {
-        let v = data[i];
-        data1[2 * i] = v & 0xff;
-        data1[2 * i + 1] = (v >> 8) & 0xff;
-    }
+    console.warn(`createIndexTexture: ${data.length}`)
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, tex_w, tex_h, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, data1);
+    gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, tex_w, tex_h, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, data);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
 

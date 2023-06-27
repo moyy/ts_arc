@@ -58,7 +58,7 @@ export const get_char_arc = (
     }
 
     console.log("")
-    console.warn("============== 03. 应用奇偶规则后的结果：");
+    console.log("============== 03. 应用奇偶规则后的结果：");
     let s = []
     for (let r of endpoints) {
         s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
@@ -126,7 +126,7 @@ const get_endpoints = (
     let accumulate = new GlyphyArcAccumulator();
     accumulate.tolerance = tolerance_per_em;
 
-    console.warn("============== 01. 原始路径：");
+    console.log("============== 01. 原始路径：");
     let last_point = [Infinity, Infinity];
 
     let cmds, flip_y;
@@ -242,7 +242,7 @@ const get_endpoints = (
     };
 
     console.log("")
-    console.warn(`================= 02. accumulate 结果: ${accumulate.result.length}`);
+    console.log(`================= 02. accumulate 结果: ${accumulate.result.length}`);
     let s = []
     for (let r of accumulate.result) {
         s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
