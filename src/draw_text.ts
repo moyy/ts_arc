@@ -187,6 +187,11 @@ export class DrawText {
         // 从arcs.data中获取对应的数据
         let unitArc = this.last_arcs.data[j][i];
 
+        // 0 和 1 有 特殊含义
+        if (unitArc.data.length < 2) {
+            return;
+        }
+
         let ctx = this.ctx;
         ctx.save();
         ctx.translate(this.init_x, this.init_y);
@@ -218,7 +223,7 @@ export class DrawText {
         return this.last_blob_string;
     }
 
-    draw(font_size = 128) {
+    draw(font_size = 256) {
         if (!this.font) {
             this.font = this.load();
         }
@@ -333,10 +338,6 @@ export class DrawText {
                 let unit = arcs.data[j][i];
 
                 let text = unit.show;
-                // let text = unit.data.length.toString();
-                // if (unit.side < 0 && unit.data.length === 0) {
-                //     text = "-1";
-                // }
 
                 ctx.save();
                 ctx.scale(1, -1);

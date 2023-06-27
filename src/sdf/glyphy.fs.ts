@@ -55,6 +55,12 @@ struct glyphy_arc_endpoint_t {
 	float d;
 };
 
+struct line_t {
+	float distance;
+
+	float angle;
+};
+
 // 取 索引 uv
 vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 {
@@ -69,7 +75,7 @@ glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
 {
 	float value = 256.0 * (v.r + v.a * 256.0);
 
-    float num_points = floor(value / 16384.0);
+    float num_endpoints = floor(value / 16384.0);
     float sdf_and_offset_index = mod(value, 16384.0);
 
     float sdf_index = floor(sdf_and_offset_index / u_info.x);
@@ -81,11 +87,7 @@ glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
 
 	index.sdf = sdf;
 	index.offset = int(offset);
-	index.num_endpoints = int(num_points);
-	if (index.num_endpoints > 0) {
-		index.num_endpoints += 1;
-	}
-
+	index.num_endpoints = int(num_endpoints);
 	return index;
 }
 
@@ -223,6 +225,21 @@ float glyphy_arc_extended_dist(const glyphy_arc_t a, const vec2 p)
 	}
 }
 
+line_t decode_line(const vec4 v, const ivec2 nominal_size) {
+
+	line_t l;
+	
+	ivec4 iv = glyphy_vec4_to_bytes(v);
+
+	l.distance = float(((iv.r - 128) * 256 + iv.g) - 0x4000) / float (0x1FFF)
+					* max (float (nominal_size.x), float (nominal_size.y));
+	
+	l.angle = float(-((iv.b * 256 + iv.a) - 0x8000)) / float (0x7FFF) * 3.14159265358979;
+
+	return l;
+}
+
+
 // 重点 计算 sdf 
 float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 
@@ -247,8 +264,19 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 
 	glyphy_arc_t closest_arc;
 
-	vec4 rgba = texture2D(u_data_tex, vec2(float(index_info.offset) / u_info.x, 0.0));
+	vec4 rgba = texture2D(u_data_tex, vec2((0.5 + float(index_info.offset)) / u_info.x, 0.0));
+	
+	// 线段 特殊处理
+	if(index_info.num_endpoints == 1) {
+		line_t line = decode_line(rgba, nominal_size);
+		
+		vec2 n = vec2(cos(line.angle), sin(line.angle));
+		
+		return dot(p - (vec2(nominal_size) * 0.5), n) - line.distance;
+	}
+
 	glyphy_arc_endpoint_t endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
+	
 	vec2 pp = endpoint.p;
 
 	// 1个像素 最多 32次 采样 
@@ -257,7 +285,7 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 			break;
 		}
 		
-		rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+		vec4 rgba = texture2D(u_data_tex, vec2((0.5 + float(index_info.offset + i)) / u_info.x, 0.0));
 		if(index_info.num_endpoints == 0 && rgba == vec4(0.0)) {
 			break;
 		}
@@ -272,12 +300,6 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 			continue;
 		}
 
-		if(index_info.num_endpoints == 2 && a.d == 0.0) {
-			// TODO 处理线段
-
-			// continue;
-		}
-		
 		if(glyphy_arc_wedge_contains(a, p)) { // 处理 尖角 
 			float sdist = glyphy_arc_wedge_signed_dist(a, p);
 			float udist = abs(sdist) * (1.0 - GLYPHY_EPSILON);
@@ -305,16 +327,16 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 
 				float ext_dist = abs(new_ext_dist) <= abs(old_ext_dist) ? old_ext_dist : new_ext_dist;
 
-				// #ifdef GLYPHY_SDF_PSEUDO_DISTANCE
-				// 	// For emboldening and stuff:
-				// 	min_dist = abs(ext_dist);
-				// #endif
+				#ifdef GLYPHY_SDF_PSEUDO_DISTANCE
+					// For emboldening and stuff:
+					min_dist = abs(ext_dist);
+				#endif
 	
 				side = sign(ext_dist);
 			}
 		}
 		pp = endpoint.p;
-	} // 最多 32次 采样结束 
+	}
 
 	if(side == 0.) {
 		// Technically speaking this should not happen, but it does.  So try to fix it.
@@ -322,13 +344,10 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		side = sign(ext_dist);
 	}
 
-	return index_info.sdf;
-	// return min_dist * side;
+	// return index_info.sdf;
+
+	return min_dist * side;
 }
-
-// ================ end glyphy-sdf.glsl
-
-// ================ begin demo-fshader.glsl
 
 // (网格的边界-宽, 网格的边界-高, z, w)
 // z(有效位 低15位) --> (高7位:纹理偏移.x, 中6位:网格宽高.x, 低2位: 00) 
@@ -398,9 +417,6 @@ void main() {
 	vec4 test = texture2D(u_data_tex, vec2(0.0, 0.0));
 	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
-
-	gl_FragColor = vec4(gsdist, 0.0, 0.0, 1.0);
 }
 
-// ================ end demo-fshader.glsl
 `);

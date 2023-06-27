@@ -1,10 +1,11 @@
 import { AABB } from "./geometry/aabb.js";
 import { Arc, ArcEndpoint } from "./geometry/arc.js";
 import { glyphy_arc_list_extents } from "./geometry/arcs.js";
+import { Line } from "./geometry/line.js";
 import { Point } from "./geometry/point.js";
 import { Vector } from "./geometry/vector.js";
 import { glyphy_sdf_from_arc_list } from "./sdf.js";
-import { GLYPHY_INFINITY, is_inf } from "./util.js";
+import { GLYPHY_INFINITY, assert, is_inf } from "./util.js";
 
 const MAX_GRID_SIZE = 63;
 
@@ -108,7 +109,8 @@ export const closest_arcs_to_cell = (
 		if (i == 0 || !p1.equals(arc.p0)) {
 			let endpoint = {
 				p: arc.p0.clone(),
-				d: GLYPHY_INFINITY
+				d: GLYPHY_INFINITY,
+				line_encode: null,
 			};
 			near_endpoints.push(endpoint);
 			p1 = arc.p0;
@@ -116,7 +118,8 @@ export const closest_arcs_to_cell = (
 
 		let endpoint = {
 			p: arc.p1,
-			d: arc.d
+			d: arc.d,
+			line_encode: null,
 		};
 
 		near_endpoints.push(endpoint);
@@ -125,7 +128,6 @@ export const closest_arcs_to_cell = (
 
 	return [side * min_dist, effect_endpoints];
 }
-
 
 export const glyphy_arc_list_encode_blob2 = (
 	endpoints: ArcEndpoint[],
@@ -182,8 +184,6 @@ export const glyphy_arc_list_encode_blob2 = (
 
 	let cell_unit = unit / Math.max(grid_w, grid_h);
 
-	// TODO 顶点坐标
-
 	// 每个 格子的 最近的 圆弧
 	let near_endpoints: ArcEndpoint[] = [];
 
@@ -220,10 +220,38 @@ export const glyphy_arc_list_encode_blob2 = (
 			);
 			unit_arc.sdf = sdf;
 
+			if (near_endpoints.length === 0) {
+				near_endpoints = effect_endpoints;
+			}
+
 			// 线段，终点的 d = 0
 			if (near_endpoints.length == 2 && near_endpoints[1].d == 0) {
-				unit_arc.data.push(near_endpoints[0]);
-				unit_arc.data.push(near_endpoints[1]);
+				// unit_arc.data.push(near_endpoints[0]);
+				// unit_arc.data.push(near_endpoints[1]);
+
+				let c = new Point(extents.min_x + glyph_width * .5, extents.min_y + glyph_height * .5);
+
+				let start = near_endpoints[0];
+				let end = near_endpoints[1];
+
+				let line = Line.from_points(
+					snap(start.p, extents, glyph_width, glyph_height),
+					snap(end.p, extents, glyph_width, glyph_height)
+				);
+
+				line.c -= line.n.dot(c.into_vector());
+				line.c /= unit;
+
+				let le = line_encode(line);
+
+				let line_data: ArcEndpoint = {
+					p: new Point(),
+					d: 0.0,
+					line_encode: le,
+				};
+
+				unit_arc.data.push(line_data);
+
 				continue;
 			}
 
@@ -241,10 +269,6 @@ export const glyphy_arc_list_encode_blob2 = (
 				near_endpoints.push(e0);
 				near_endpoints.push(e1);
 				near_endpoints.push(e2);
-			}
-
-			if (near_endpoints.length === 0) {
-				near_endpoints = effect_endpoints;
 			}
 
 			// 编码到纹理：该格子 对应 的 圆弧数据
@@ -330,13 +354,9 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("unit_arc not found");
 				}
 
-				// 注：这里因为没有 端点为1 的 晶格
-				// 所以 num_points 为 2，3，4 编码成了 1，2，3
 				let num_points = map_arc_data.data.length;
-				if (num_points > 4) {
+				if (num_points > 3) {
 					num_points = 0;
-				} else {
-					num_points -= 1;
 				}
 
 				let offset = map_arc_data.offset;
@@ -345,8 +365,8 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
 				indiecs.push(encode);
 
-				// unit_arc.show = `${num_points}:${sdf_index}`;
-				unit_arc.show = `${sdf_index}:${sdf.toFixed(1)}`;
+				// unit_arc.show = `${sdf_index}:${num_points}:${sdf.toFixed(1)}`;
+				unit_arc.show = `${num_points}:${sdf.toFixed(1)}`;
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
 				if (r.num_points !== num_points || r.offset !== offset) {
@@ -367,7 +387,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 		let sdf = min_sdf + sdf_step * i;
 		level_sdf.push(sdf.toFixed(2));
 	}
-	data.show += `<br> sdf_level: ${level_sdf.join(", ")} <br>`;
+	// data.show += `<br> sdf_level: ${level_sdf.join(", ")} <br>`;
 
 	let index_tex = new Uint8Array(2 * indiecs.length);
 	for (let i = 0; i < indiecs.length; i++) {
@@ -472,11 +492,19 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 	let r = [];
 	for (let unit_arc of map.values()) {
 		unit_arc.offset = r.length / 4;
-		for (let endpoint of unit_arc.data) {
-			let qx = quantize_x(endpoint.p.x, extents, width_cells);
-			let qy = quantize_y(endpoint.p.y, extents, height_cells);
-			let rgba = arc_endpoint_encode(qx, qy, endpoint.d);
-			r.push(...rgba);
+
+		if (unit_arc.data.length === 1) {
+			assert(unit_arc.data[0].line_encode !== null);
+			if (unit_arc.data[0].line_encode !== null) {
+				r.push(...unit_arc.data[0].line_encode);
+			}
+		} else {
+			for (let endpoint of unit_arc.data) {
+				let qx = quantize_x(endpoint.p.x, extents, width_cells);
+				let qy = quantize_y(endpoint.p.y, extents, height_cells);
+				let rgba = arc_endpoint_encode(qx, qy, endpoint.d);
+				r.push(...rgba);
+			}
 		}
 
 		// 单元的端点个数超过 3 个，补充一个全零像素代表结束；
@@ -607,4 +635,25 @@ const get_neibor = (blob: BlobArc, i: number, j: number): [number, number][] => 
 	}
 
 	return neibors;
+}
+
+// rgba
+const line_encode = (line: Line): [number, number, number, number] => {
+	let l = line.normalized();
+
+	let angle = l.n.angle();
+	let distance = l.c;
+
+	let ia = Math.round(-angle / Math.PI * 0x7FFF);
+	let ua = ia + 0x8000;
+	assert(0 == (ua & ~0xFFFF));
+
+	let id = Math.round(distance * 0x1FFF);
+	let ud = id + 0x4000;
+	assert(0 == (ud & ~0x7FFF));
+
+	/* Marker for line-encoded */
+	ud |= 0x8000;
+
+	return [ud >> 8, ud & 0xFF, ua >> 8, ua & 0xFF];
 }

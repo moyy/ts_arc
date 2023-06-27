@@ -30,12 +30,16 @@ export interface ErrorValue {
 export interface ArcEndpoint {
     p: Point;
     d: number;
+
+    // 线段特殊处理，只有一个值
+    line_encode: null | [number, number, number, number]; // rgba
 }
 
 export const create_arc_endpoint = (x: number, y: number, d: number): ArcEndpoint => {
     return {
         p: new Point(x, y),
-        d: d
+        d: d,
+        line_encode: null,
     }
 }
 
