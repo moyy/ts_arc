@@ -9,6 +9,10 @@ export class Material {
         this.program = null;
     }
 
+    dispose(gl: WebGLRenderingContext) {
+
+    }
+
     clone(): Material {
         return new Material();
     }

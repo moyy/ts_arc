@@ -36,6 +36,18 @@ export class Geometry {
         };
     }
 
+    dispose(gl: WebGLRenderingContext) {
+        for (let [name, { id }] of this.vbo) {
+            gl.deleteBuffer(id);
+        }
+        this.vbo.clear();
+
+        if (this.ibo.id) {
+            gl.deleteBuffer(this.ibo.id);
+            this.ibo.id = 0;
+        }
+    }
+
     addAttribute(
         gl: WebGLRenderingContext,
         name: string,
@@ -105,12 +117,25 @@ export class Geometry {
 export class Mesh {
     drawCount: number;
     material: null | Material;
-    geometry: Geometry;
+    geometry: null | Geometry;
+
     constructor(gl: WebGLRenderingContext, geometry: null | Geometry = null) {
         this.drawCount = 1;
 
         this.material = null;
         this.geometry = geometry ? geometry : new Geometry(gl);
+    }
+
+    dispose(gl: WebGLRenderingContext) {
+        if (this.geometry) {
+            this.geometry.dispose(gl);
+            this.geometry = null;
+        }
+
+        if (this.material) {
+            this.material.dispose(gl);
+            this.material = null;
+        }
     }
 
     setDrawCount(count: number) {
@@ -123,16 +148,20 @@ export class Mesh {
 
     addAttribute(
         gl: WebGLRenderingContext,
-        name: string, 
-        itemSize: number, 
+        name: string,
+        itemSize: number,
         value: number[]) {
-        this.geometry.addAttribute(gl, name, itemSize, value);
+        if (this.geometry) {
+            this.geometry.addAttribute(gl, name, itemSize, value);
+        }
     }
 
     setIndices(
         gl: WebGLRenderingContext,
         indices: number[]) {
-        this.geometry.setIndices(gl, indices);
+        if (this.geometry) {
+            this.geometry.setIndices(gl, indices);
+        }
     }
 
     draw(
@@ -143,6 +172,9 @@ export class Mesh {
             return;
         }
         if (!this.material.program) {
+            return;
+        }
+        if(!this.geometry) {
             return;
         }
         

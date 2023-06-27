@@ -128,12 +128,10 @@ export class Program {
         let u = this.uniforms.get(name);
         if (!u) {
             let u1 = gl.getUniformLocation(this.id, name);
-            if (!u1) {
-                throw new Error(`getUniformLocation failed, name = ${name}`);
+            if (u1) {
+                u = u1;
+                this.uniforms.set(name, u);
             }
-
-            u = u1;
-            this.uniforms.set(name, u);
         }
         return u;
     }

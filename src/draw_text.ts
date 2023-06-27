@@ -4,7 +4,7 @@ import { ArcEndpoint } from 'glyphy/geometry/arc.js';
 import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
 import { get_char_arc, to_arc_cmds } from 'glyphy_draw.js';
 import * as opentype from 'opentype.js';
-import { set_glyph } from 'sdf/glyph.js';
+import { delete_glyph, set_glyph } from 'sdf/glyph.js';
 
 /**
  * + 填充规则：奇偶规则
@@ -125,7 +125,11 @@ export class DrawText {
     }
 
     set_char(char: string) {
+        if (this.char !== char[0]) {
+            delete_glyph(this.char);
+        }
         this.char = char[0];
+
         if (!this.font) {
             this.font = this.load()
         }
