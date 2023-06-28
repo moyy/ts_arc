@@ -94,7 +94,7 @@ export class SdfContext {
     initGLState() {
         let gl = this.gl;
 
-        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
         gl.disable(gl.DEPTH_TEST);
 

@@ -32,6 +32,7 @@ export interface ArcEndpoint {
     d: number;
 
     // 线段特殊处理，只有一个值
+    line_key: null | string,
     line_encode: null | [number, number, number, number]; // rgba
 }
 
@@ -39,6 +40,7 @@ export const create_arc_endpoint = (x: number, y: number, d: number): ArcEndpoin
     return {
         p: new Point(x, y),
         d: d,
+        line_key: null,
         line_encode: null,
     }
 }

@@ -73,9 +73,9 @@ vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 // 解码 索引纹理 
 glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
 {
-	float value = 256.0 * (v.r + v.a * 256.0);
+	float value = 255.0 * (v.r + v.a * 256.0);
 
-    float num_endpoints = floor(value / 16384.0);
+	float num_endpoints = floor(value / 16384.0);
     float sdf_and_offset_index = mod(value, 16384.0);
 
     float sdf_index = floor(sdf_and_offset_index / u_info.x);
@@ -88,6 +88,7 @@ glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
 	index.sdf = sdf;
 	index.offset = int(offset);
 	index.num_endpoints = int(num_endpoints);
+	
 	return index;
 }
 
@@ -206,7 +207,7 @@ bool glyphy_arc_wedge_contains(const glyphy_arc_t a, const vec2 p)
 
 glyphy_index_t get_glyphy_index(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	vec2 index_uv = get_index_uv(p, nominal_size);
-	vec4 c = texture2D(u_index_tex, index_uv);
+	vec4 c = texture2D(u_index_tex, index_uv).rgba;
 	return decode_glyphy_index(c, nominal_size);
 }
 
@@ -262,9 +263,7 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	float side = index_info.sdf < 0.0 ? -1.0 : 1.0;
 	float min_dist = GLYPHY_INFINITY;
 
-	glyphy_arc_t closest_arc;
-
-	vec4 rgba = texture2D(u_data_tex, vec2((0.5 + float(index_info.offset)) / u_info.x, 0.0));
+	vec4 rgba = texture2D(u_data_tex, vec2(float(index_info.offset) / u_info.x, 0.0));
 	
 	// 线段 特殊处理
 	if(index_info.num_endpoints == 1) {
@@ -272,79 +271,80 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		
 		vec2 n = vec2(cos(line.angle), sin(line.angle));
 		
-		return dot(p - (vec2(nominal_size) * 0.5), n) - line.distance;
-	}
-
-	glyphy_arc_endpoint_t endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
+		side = 1.0;
+		min_dist = dot(p - (vec2(nominal_size) * 0.5), n) - line.distance;
+	} else {
+		glyphy_arc_t closest_arc;
+		glyphy_arc_endpoint_t endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
 	
-	vec2 pp = endpoint.p;
-
-	// 1个像素 最多 32次 采样 
-	for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
-		if(i >= index_info.num_endpoints) {
-			break;
-		}
+		vec2 pp = endpoint.p;
+	
+		// 1个像素 最多 32次 采样 
+		for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
+			if(i >= index_info.num_endpoints) {
+				break;
+			}
+			
+			vec4 rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+			if(index_info.num_endpoints == 0 && rgba == vec4(0.0)) {
+				break;
+			}
+	
+			endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
+			
+			glyphy_arc_t a = glyphy_arc_t(pp, endpoint.p, endpoint.d);
+	
+			// 无穷的 d 代表 Move 语义 
+			if(glyphy_isinf(a.d)) {
+				pp = endpoint.p;
+				continue;
+			}
+	
+			if(glyphy_arc_wedge_contains(a, p)) { // 处理 尖角 
+				float sdist = glyphy_arc_wedge_signed_dist(a, p);
+				float udist = abs(sdist) * (1.0 - GLYPHY_EPSILON);
+	
+				if(udist <= min_dist) {
+					min_dist = udist;
+					side = sdist <= 0. ? -1.0 : +1.0;
+				}
+			} else {
+				float udist = min(distance(p, a.p0), distance(p, a.p1));
+	
+				if(udist < min_dist - GLYPHY_EPSILON) {
+					min_dist = udist;
+					side = 0.0; /* unsure */
+					closest_arc = a;
+				} else if(side == 0.0 && udist - min_dist <= GLYPHY_EPSILON) {
+					/** 
+					 * If this new distance is the same as the current minimum,
+					 * compare extended distances.  Take the sign from the arc
+					 * with larger extended distance. 
+					 */
+	
+					float old_ext_dist = glyphy_arc_extended_dist(closest_arc, p);
+					float new_ext_dist = glyphy_arc_extended_dist(a, p);
+	
+					float ext_dist = abs(new_ext_dist) <= abs(old_ext_dist) ? old_ext_dist : new_ext_dist;
+	
+					#ifdef GLYPHY_SDF_PSEUDO_DISTANCE
+						// For emboldening and stuff:
+						min_dist = abs(ext_dist);
+					#endif
 		
-		vec4 rgba = texture2D(u_data_tex, vec2((0.5 + float(index_info.offset + i)) / u_info.x, 0.0));
-		if(index_info.num_endpoints == 0 && rgba == vec4(0.0)) {
-			break;
-		}
-
-		endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
-		
-		glyphy_arc_t a = glyphy_arc_t(pp, endpoint.p, endpoint.d);
-
-		// 无穷的 d 代表 Move 语义 
-		if(glyphy_isinf(a.d)) {
+					side = sign(ext_dist);
+				}
+			}
 			pp = endpoint.p;
-			continue;
 		}
-
-		if(glyphy_arc_wedge_contains(a, p)) { // 处理 尖角 
-			float sdist = glyphy_arc_wedge_signed_dist(a, p);
-			float udist = abs(sdist) * (1.0 - GLYPHY_EPSILON);
-
-			if(udist <= min_dist) {
-				min_dist = udist;
-				side = sdist <= 0. ? -1.0 : +1.0;
-			}
-		} else {
-			float udist = min(distance(p, a.p0), distance(p, a.p1));
-
-			if(udist < min_dist - GLYPHY_EPSILON) {
-				min_dist = udist;
-				side = 0.0; /* unsure */
-				closest_arc = a;
-			} else if(side == 0.0 && udist - min_dist <= GLYPHY_EPSILON) {
-				/** 
-				 * If this new distance is the same as the current minimum,
-				 * compare extended distances.  Take the sign from the arc
-				 * with larger extended distance. 
-				 */
-
-				float old_ext_dist = glyphy_arc_extended_dist(closest_arc, p);
-				float new_ext_dist = glyphy_arc_extended_dist(a, p);
-
-				float ext_dist = abs(new_ext_dist) <= abs(old_ext_dist) ? old_ext_dist : new_ext_dist;
-
-				#ifdef GLYPHY_SDF_PSEUDO_DISTANCE
-					// For emboldening and stuff:
-					min_dist = abs(ext_dist);
-				#endif
 	
-				side = sign(ext_dist);
-			}
+		if(side == 0.) {
+			// Technically speaking this should not happen, but it does.  So try to fix it.
+			float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
+			side = sign(ext_dist);
 		}
-		pp = endpoint.p;
+	
 	}
-
-	if(side == 0.) {
-		// Technically speaking this should not happen, but it does.  So try to fix it.
-		float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
-		side = sign(ext_dist);
-	}
-
-	// return index_info.sdf;
 
 	return min_dist * side;
 }
@@ -414,9 +414,6 @@ void main() {
 
 	float alpha = antialias(sdist);
 
-	vec4 test = texture2D(u_data_tex, vec2(0.0, 0.0));
-	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
 }
-
 `);

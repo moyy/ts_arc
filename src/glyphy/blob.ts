@@ -111,6 +111,7 @@ export const closest_arcs_to_cell = (
 				p: arc.p0.clone(),
 				d: GLYPHY_INFINITY,
 				line_encode: null,
+				line_key: null,
 			};
 			near_endpoints.push(endpoint);
 			p1 = arc.p0;
@@ -120,6 +121,7 @@ export const closest_arcs_to_cell = (
 			p: arc.p1,
 			d: arc.d,
 			line_encode: null,
+			line_key: null,
 		};
 
 		near_endpoints.push(endpoint);
@@ -248,6 +250,7 @@ export const glyphy_arc_list_encode_blob2 = (
 					p: new Point(),
 					d: 0.0,
 					line_encode: le,
+					line_key: get_line_key(near_endpoints[0], near_endpoints[1]),
 				};
 
 				unit_arc.data.push(line_data);
@@ -365,16 +368,19 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
 				indiecs.push(encode);
 
-				// unit_arc.show = `${sdf_index}:${num_points}:${sdf.toFixed(1)}`;
-				unit_arc.show = `${num_points}:${sdf.toFixed(1)}`;
-
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
 				if (r.num_points !== num_points || r.offset !== offset) {
 					console.error(`encode index error: min_sdf: ${min_sdf}, max_sdf: ${max_sdf}, max_offset: ${max_offset}`);
 					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, encode: ${encode}`);
 					console.error(`encode index error: decode_from_uint16: num_points: ${r.num_points}, offset: ${r.offset}, sdf: ${r.sdf}`);
 					console.error(``);
+
+					throw new Error("encode index error")
 				}
+
+				// unit_arc.show = `${sdf_index}:${num_points}:${sdf.toFixed(1)}`;
+				// unit_arc.show = `${num_points}:${sdf.toFixed(1)}`;
+				unit_arc.show = `${r.num_points}:${r.offset}`;
 			}
 		}
 	}
@@ -391,8 +397,9 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 	let index_tex = new Uint8Array(2 * indiecs.length);
 	for (let i = 0; i < indiecs.length; i++) {
-		index_tex[2 * i] = indiecs[i] & 0xff;
-		index_tex[2 * i + 1] = indiecs[i] >> 8;
+		let d = indiecs[i];
+		index_tex[2 * i] = d & 0xff;
+		index_tex[2 * i + 1] = d >> 8;
 	}
 
 	return {
@@ -449,8 +456,8 @@ const decode_from_uint16 = (
 	sdf_step: number,
 
 ) => {
-	let num_points = value >> 14;
-	let sdf_and_offset_index = value & ((1 << 14) - 1);
+	let num_points = Math.floor(value / 16384);
+	let sdf_and_offset_index = value % 16384;
 
 	let sdf_index = Math.floor(sdf_and_offset_index / max_offset);
 	let offset = sdf_and_offset_index % max_offset;
@@ -460,10 +467,23 @@ const decode_from_uint16 = (
 	return { num_points, sdf, offset };
 }
 
+const get_line_key = (ep0: ArcEndpoint, ep1: ArcEndpoint) => {
+	let key = ``;
+	key += `${ep0.p.x}_${ep0.p.y}_${ep0.d}_`;
+	key += `${ep1.p.x}_${ep1.p.y}_${ep1.d}_`;
+	return key;
+}
+
 const get_key = (unit_arc: UnitArc) => {
 	let key = ``;
-	for (let endpoint of unit_arc.data) {
-		key += `${endpoint.p.x}_${endpoint.p.y}_${endpoint.d}_`;
+	if (unit_arc.data.length === 1 && unit_arc.data[0].line_key) {
+		// 线段
+		key += unit_arc.data[0].line_key;
+	}
+	else {
+		for (let endpoint of unit_arc.data) {
+			key += `${endpoint.p.x}_${endpoint.p.y}_${endpoint.d}_`;
+		}
 	}
 	return key;
 }
@@ -490,6 +510,7 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 	}
 
 	let r = [];
+	console.warn(`map size = ${map.size}, before_size = ${before_size}, after_size = ${after_size}, ratio = ${after_size / before_size}`)
 	for (let unit_arc of map.values()) {
 		unit_arc.offset = r.length / 4;
 
