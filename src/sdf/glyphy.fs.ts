@@ -6,10 +6,9 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 
 precision highp float;
 
-#define GLYPHY_INFINITY 1e9
-#define GLYPHY_EPSILON  1e-5
-#define GLYPHY_MAX_NUM_ENDPOINTS 32
-#define GLYPHY_SDF_PSEUDO_DISTANCE 1
+#define GLYPHY_INFINITY 1e6
+#define GLYPHY_EPSILON  1e-4
+#define GLYPHY_MAX_NUM_ENDPOINTS 16
 
 uniform vec4 uColor; 
 
@@ -188,7 +187,7 @@ glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const ivec2 nomin
 	} else {
 		#define GLYPHY_MAX_D 0.5
 	
-		d = float(glyphy_float_to_byte (d) - 128) * GLYPHY_MAX_D / 127.0;
+		d = float(glyphy_float_to_byte(d) - 128) * GLYPHY_MAX_D / 127.0;
 	
 		#undef GLYPHY_MAX_D
 	}
@@ -313,25 +312,14 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	
 				if(udist < min_dist - GLYPHY_EPSILON) {
 					min_dist = udist;
-					side = 0.0; /* unsure */
+					side = 0.0;
 					closest_arc = a;
 				} else if(side == 0.0 && udist - min_dist <= GLYPHY_EPSILON) {
-					/** 
-					 * If this new distance is the same as the current minimum,
-					 * compare extended distances.  Take the sign from the arc
-					 * with larger extended distance. 
-					 */
-	
 					float old_ext_dist = glyphy_arc_extended_dist(closest_arc, p);
 					float new_ext_dist = glyphy_arc_extended_dist(a, p);
 	
 					float ext_dist = abs(new_ext_dist) <= abs(old_ext_dist) ? old_ext_dist : new_ext_dist;
 	
-					#ifdef GLYPHY_SDF_PSEUDO_DISTANCE
-						// For emboldening and stuff:
-						min_dist = abs(ext_dist);
-					#endif
-		
 					side = sign(ext_dist);
 				}
 			}
@@ -339,11 +327,9 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		}
 	
 		if(side == 0.) {
-			// Technically speaking this should not happen, but it does.  So try to fix it.
 			float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
 			side = sign(ext_dist);
 		}
-	
 	}
 
 	return min_dist * side;
@@ -406,7 +392,7 @@ void main() {
 
 	// 重点：计算 SDF 
 	float gsdist = glyphy_sdf(p, gi.nominal_size, gi.atlas_pos);
-
+	
 	// 均匀缩放 
 	float scale = SQRT2 / length(fwidth(p));
 
@@ -415,5 +401,7 @@ void main() {
 	float alpha = antialias(sdist);
 
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
+
+	// gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
 }
 `);

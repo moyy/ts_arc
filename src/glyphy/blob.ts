@@ -348,8 +348,10 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 	// 2 * grid_w * grid_h 个 Uint8
 	let indiecs = [];
-	for (let row of data.data) {
-		for (let unit_arc of row) {
+	for (let i = 0; i < data.data.length; ++i) {
+		let row = data.data[i];
+		for (let j = 0; j < row.length; ++j) {
+			let unit_arc = row[j];
 			let key = get_key(unit_arc);
 			if (key) {
 				let map_arc_data = data_map.get(key);
@@ -378,9 +380,13 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("encode index error")
 				}
 
+				// console.warn(`encode_to_tex, ${i}:${j}, ${num_points}, ${offset}`)
+
+				unit_arc.show = `${sdf_index}:${num_points}`;
+
 				// unit_arc.show = `${sdf_index}:${num_points}:${sdf.toFixed(1)}`;
 				// unit_arc.show = `${num_points}:${sdf.toFixed(1)}`;
-				unit_arc.show = `${r.num_points}:${r.offset}`;
+				// unit_arc.show = `${r.num_points}:${r.offset}`;
 			}
 		}
 	}
@@ -517,6 +523,7 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 		if (unit_arc.data.length === 1) {
 			assert(unit_arc.data[0].line_encode !== null);
 			if (unit_arc.data[0].line_encode !== null) {
+				// console.warn(`encode_data_tex ${r.length / 4}, Line`)
 				r.push(...unit_arc.data[0].line_encode);
 			}
 		} else {
@@ -524,6 +531,8 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 				let qx = quantize_x(endpoint.p.x, extents, width_cells);
 				let qy = quantize_y(endpoint.p.y, extents, height_cells);
 				let rgba = arc_endpoint_encode(qx, qy, endpoint.d);
+
+				// console.warn(`encode_data_tex ${r.length / 4}, (${endpoint.p.x.toFixed(1)}, ${endpoint.p.y.toFixed(1)}), d = ${endpoint.d.toFixed(2)}`)
 				r.push(...rgba);
 			}
 		}
