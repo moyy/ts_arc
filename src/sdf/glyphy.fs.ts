@@ -191,7 +191,6 @@ glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const ivec2 nomin
 	}
 
 	p *= vec2(nominal_size);
-
 	return glyphy_arc_endpoint_t (p, d);
 }
 
@@ -280,20 +279,21 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		
 		// 1个像素 最多 32次 采样 
 		for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
-			if(i >= index_info.num_endpoints) {
+			vec4 rgba = vec4(0.0);
+			if(index_info.num_endpoints == 0) {
+				rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+				if (rgba == vec4(0.0)) {
+					break;
+				}
+			} else if (i < index_info.num_endpoints) {
+				rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+			} else {
 				break;
 			}
 			
-			vec4 rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
-			if(index_info.num_endpoints == 0 && rgba == vec4(0.0)) {
-				break;
-			}
-	
 			endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
 			
 			glyphy_arc_t a = glyphy_arc_t(pp, endpoint.p, endpoint.d);
-			
-			// return endpoint.p.y / float(nominal_size.y);
 
 			// 无穷的 d 代表 Move 语义 
 			if(glyphy_isinf(a.d)) {
@@ -326,19 +326,15 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 				}
 			}
 			pp = endpoint.p;
-	}
-	
+		}
+		
 		if(side == 0.) {
 			float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
 			side = sign(ext_dist);
 		}
 	}
  
-	// return p.y / float(nominal_size.y);
-
 	return min_dist * side;
-
-	// return float(index_info.offset) / u_info.x;
 }
 
 // (网格的边界-宽, 网格的边界-高, z, w)
@@ -382,7 +378,7 @@ glyph_info_t glyph_info_decode(vec2 v) {
 // 抗锯齿 1像素 
 // d 在 [a, b] 返回 [0.0, 1.0] 
 float antialias(float d) {
-	float b = 0.5;
+	float b = 0.3;
 	float a = -b;
 
 	float r = (-d - a) / (b - a);
@@ -405,7 +401,7 @@ void main() {
 	float sdist = gsdist * scale;
 
 	float alpha = antialias(sdist);
-
+	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
 
 	// gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);

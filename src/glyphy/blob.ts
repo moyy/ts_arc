@@ -382,19 +382,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 				// console.warn(`encode_to_tex, ${i}:${j}, ${num_points}, ${offset}`)
 
-				// unit_arc.show = `${sdf_index}:${num_points}`;
 				unit_arc.show = `${num_points}`;
-				// if (map_arc_data.data.length > 1) {
-				// 	let d = (1.0 + map_arc_data.data[1].d) / 2.0;
-				// 	unit_arc.show = `${Math.round(Math.abs(d * 255.0))}`;
-				// } else {
-				// 	unit_arc.show = `128`;
-				// } 
-				
-
-				// unit_arc.show = `${sdf_index}:${num_points}:${sdf.toFixed(1)}`;
-				// unit_arc.show = `${num_points}:${sdf.toFixed(1)}`;
-				// unit_arc.show = `${r.num_points}:${r.offset}`;
 			}
 		}
 	}
