@@ -8,6 +8,7 @@ precision highp float;
 
 #define GLYPHY_INFINITY 1e6
 #define GLYPHY_EPSILON  1e-4
+#define GLYPHY_MAX_D 0.5
 #define GLYPHY_MAX_NUM_ENDPOINTS 16
 
 uniform vec4 uColor; 
@@ -65,7 +66,7 @@ vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 {
 	ivec2 cell = ivec2 (clamp (floor(p), vec2 (0.0, 0.0), vec2(nominal_size - 1)));
 
-	cell.y = nominal_size.y - 1 - cell.y;
+	// cell.y = nominal_size.y - 1 - cell.y;
 	return vec2(cell) / vec2(nominal_size);
 }
 
@@ -146,9 +147,10 @@ float glyphy_arc_wedge_signed_dist_shallow(const glyphy_arc_t a, const vec2 p)
 {
 	vec2 v = normalize (a.p1 - a.p0);
 	float line_d = dot (p - a.p0, glyphy_ortho (v));
-	if (a.d == 0.0)
-	return line_d;
-
+	if (a.d == 0.0) {
+		return line_d;
+	}
+	
 	float d0 = dot ((p - a.p0), v);
 	if (d0 < 0.0) {
 		return sign (line_d) * distance (p, a.p0);
@@ -185,14 +187,12 @@ glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const ivec2 nomin
 	if (d == 0.0) {
 		d = GLYPHY_INFINITY;
 	} else {
-		#define GLYPHY_MAX_D 0.5
-	
 		d = float(glyphy_float_to_byte(d) - 128) * GLYPHY_MAX_D / 127.0;
-	
-		#undef GLYPHY_MAX_D
 	}
 
-	return glyphy_arc_endpoint_t (p * vec2(nominal_size), d);
+	p *= vec2(nominal_size);
+
+	return glyphy_arc_endpoint_t (p, d);
 }
 
 // 判断是否 尖角内 
@@ -277,7 +277,7 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		glyphy_arc_endpoint_t endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
 	
 		vec2 pp = endpoint.p;
-	
+		
 		// 1个像素 最多 32次 采样 
 		for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
 			if(i >= index_info.num_endpoints) {
@@ -292,7 +292,9 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 			endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
 			
 			glyphy_arc_t a = glyphy_arc_t(pp, endpoint.p, endpoint.d);
-	
+			
+			// return endpoint.p.y / float(nominal_size.y);
+
 			// 无穷的 d 代表 Move 语义 
 			if(glyphy_isinf(a.d)) {
 				pp = endpoint.p;
@@ -305,14 +307,14 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	
 				if(udist <= min_dist) {
 					min_dist = udist;
-					side = sdist <= 0. ? -1.0 : +1.0;
+					side = sdist <= 0.0 ? -1.0 : +1.0;
 				}
 			} else {
 				float udist = min(distance(p, a.p0), distance(p, a.p1));
 	
 				if(udist < min_dist - GLYPHY_EPSILON) {
-					min_dist = udist;
 					side = 0.0;
+					min_dist = udist;
 					closest_arc = a;
 				} else if(side == 0.0 && udist - min_dist <= GLYPHY_EPSILON) {
 					float old_ext_dist = glyphy_arc_extended_dist(closest_arc, p);
@@ -324,15 +326,19 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 				}
 			}
 			pp = endpoint.p;
-		}
+	}
 	
 		if(side == 0.) {
 			float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
 			side = sign(ext_dist);
 		}
 	}
+ 
+	// return p.y / float(nominal_size.y);
 
 	return min_dist * side;
+
+	// return float(index_info.offset) / u_info.x;
 }
 
 // (网格的边界-宽, 网格的边界-高, z, w)
