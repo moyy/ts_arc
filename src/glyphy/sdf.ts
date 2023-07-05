@@ -46,7 +46,9 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
                 }
                 let lp: ArcEndpoint = {
                     d: GLYPHY_INFINITY,
-                    p: last_ep.p
+                    p: last_ep.p,
+                    line_key: null,
+                    line_encode: null,
                 };
                 effect_endpoints = [lp, endpoint];
                 side = sdist >= 0 ? -1 : +1;
@@ -65,7 +67,10 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
                 }
                 let lp: ArcEndpoint = {
                     d: GLYPHY_INFINITY,
-                    p: last_ep.p
+                    p: last_ep.p,
+                    line_key: null,
+                    line_encode: null,
+
                 };
                 effect_endpoints = [lp, endpoint];
 

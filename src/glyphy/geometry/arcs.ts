@@ -98,7 +98,12 @@ export class GlyphyArcAccumulator {
     }
 
     emit(p: Point, d: number) {
-        let endpoint = { p, d };
+        let endpoint = { 
+            p, 
+            d,
+            line_key: null,
+            line_encode: null,
+        };
         this.result.push(endpoint);
 
         this.num_endpoints++;

@@ -254,7 +254,7 @@ export const process_contour = (endpoints: ArcEndpoint[], all_endpoints: ArcEndp
         return false; // Need at least two arcs
     }
 
-    if (endpoints[0].p.equals(endpoints[num_endpoints - 1].p)) {
+    if (!endpoints[0].p.equals(endpoints[num_endpoints - 1].p)) {
         console.error("Don't expect this");
         return false; // Need a closed contour
     }

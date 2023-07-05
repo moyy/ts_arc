@@ -264,8 +264,6 @@ const createDataTexture = (
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    console.warn(`createDataTexture: ${data.length}`)
-
     gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
@@ -292,8 +290,6 @@ const createIndexTexture = (
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     
-    console.warn(`createIndexTexture: ${data.length}`)
-
     gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 

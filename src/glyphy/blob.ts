@@ -5,7 +5,7 @@ import { Line } from "./geometry/line.js";
 import { Point } from "./geometry/point.js";
 import { Vector } from "./geometry/vector.js";
 import { glyphy_sdf_from_arc_list } from "./sdf.js";
-import { GLYPHY_INFINITY, assert, is_inf } from "./util.js";
+import { GLYPHY_INFINITY, assert, float_equals, is_inf } from "./util.js";
 
 const MAX_GRID_SIZE = 63;
 
@@ -231,8 +231,6 @@ export const glyphy_arc_list_encode_blob2 = (
 				// unit_arc.data.push(near_endpoints[0]);
 				// unit_arc.data.push(near_endpoints[1]);
 
-				let c = new Point(extents.min_x + glyph_width * .5, extents.min_y + glyph_height * .5);
-
 				let start = near_endpoints[0];
 				let end = near_endpoints[1];
 
@@ -241,16 +239,22 @@ export const glyphy_arc_list_encode_blob2 = (
 					snap(end.p, extents, glyph_width, glyph_height)
 				);
 
+				// c 第一个网格的中心
+				let c = new Point(extents.min_x + glyph_width * .5, extents.min_y + glyph_height * .5);
+
+				// Shader的最后 要加回去
 				line.c -= line.n.dot(c.into_vector());
+				// shader 的 decode 要 乘回去
 				line.c /= unit;
 
+				let line_key = get_line_key(near_endpoints[0], near_endpoints[1]);
 				let le = line_encode(line);
-
+				
 				let line_data: ArcEndpoint = {
 					p: new Point(),
 					d: 0.0,
+					line_key,
 					line_encode: le,
-					line_key: get_line_key(near_endpoints[0], near_endpoints[1]),
 				};
 
 				unit_arc.data.push(line_data);
@@ -371,6 +375,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				indiecs.push(encode);
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
+				
 				if (r.num_points !== num_points || r.offset !== offset) {
 					console.error(`encode index error: min_sdf: ${min_sdf}, max_sdf: ${max_sdf}, max_offset: ${max_offset}`);
 					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, encode: ${encode}`);
@@ -380,9 +385,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("encode index error")
 				}
 
-				// console.warn(`encode_to_tex, ${i}:${j}, ${num_points}, ${offset}`)
-
-				unit_arc.show = `${num_points}`;
+				unit_arc.show = `${num_points}:${offset}`;
 			}
 		}
 	}
@@ -512,15 +515,22 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 	}
 
 	let r = [];
-	console.warn(`map size = ${map.size}, before_size = ${before_size}, after_size = ${after_size}, ratio = ${after_size / before_size}`)
-	for (let unit_arc of map.values()) {
-		unit_arc.offset = r.length / 4;
 
+	// console.warn(`map size = ${map.size}, before_size = ${before_size}, after_size = ${after_size}, ratio = ${after_size / before_size}`)
+	
+	for (let k of map.keys()) {
+		let unit_arc = map.get(k);
+		if (!unit_arc) {
+			throw new Error("unit_arc is null");
+		}
+
+		unit_arc.offset = r.length / 4;
+		
 		if (unit_arc.data.length === 1) {
 			assert(unit_arc.data[0].line_encode !== null);
 			if (unit_arc.data[0].line_encode !== null) {
-				// console.warn(`encode_data_tex ${r.length / 4}, Line`)
-				r.push(...unit_arc.data[0].line_encode);
+				let e = unit_arc.data[0].line_encode;
+				r.push(...e);
 			}
 		} else {
 			for (let endpoint of unit_arc.data) {
@@ -651,7 +661,7 @@ const get_neibor = (blob: BlobArc, i: number, j: number): [number, number][] => 
 				continue;
 			}
 
-			// 本格子不算邻居
+			// 本格子不算邻居f
 			if (ii == i && jj == j) {
 				continue;
 			}
@@ -668,18 +678,32 @@ const line_encode = (line: Line): [number, number, number, number] => {
 	let l = line.normalized();
 
 	let angle = l.n.angle();
-	let distance = l.c;
-
 	let ia = Math.round(-angle / Math.PI * 0x7FFF);
 	let ua = ia + 0x8000;
 	assert(0 == (ua & ~0xFFFF));
 
-	let id = Math.round(distance * 0x1FFF);
+	let d = l.c;
+	let id = Math.round(d * 0x1FFF);
 	let ud = id + 0x4000;
 	assert(0 == (ud & ~0x7FFF));
-
-	/* Marker for line-encoded */
 	ud |= 0x8000;
 
 	return [ud >> 8, ud & 0xFF, ua >> 8, ua & 0xFF];
+}
+
+const line_decode = (encoded: [number, number, number, number], nominal_size: [number, number]) => {
+
+	let ua = encoded[2] * 256 + encoded[3];
+	let ia = ua - 0x8000;
+	let angle = -ia / 0x7FFF * 3.14159265358979;
+
+	const ud = (encoded[0] - 128) * 256 + encoded[1];
+	
+	const id = ud - 0x4000;
+	const d = id / 0x1FFF;
+	const scale = Math.max(nominal_size[0], nominal_size[1]);
+
+	let n = new Vector(Math.cos(angle), Math.sin(angle));
+
+	return Line.from_normal_d(n, d * scale);
 }

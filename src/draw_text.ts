@@ -174,7 +174,7 @@ export class DrawText {
         let i = Math.floor(x / cellSize);
         let j = Math.floor(y / cellSize);
 
-        console.log(`draw_network_endpoints: ${i}, ${j}`);
+        console.warn(`draw_network_endpoints: ${i}, ${j}`);
 
         if (j < 0 || j >= this.last_arcs.data.length) {
             return;

@@ -6,8 +6,8 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 
 precision highp float;
 
-#define GLYPHY_INFINITY 1e6
-#define GLYPHY_EPSILON  1e-4
+#define GLYPHY_INFINITY 1e9
+#define GLYPHY_EPSILON  1e-5
 #define GLYPHY_MAX_D 0.5
 #define GLYPHY_MAX_NUM_ENDPOINTS 16
 
@@ -23,6 +23,9 @@ uniform sampler2D u_data_tex;
 // 索引信息  
 struct glyphy_index_t {
 	
+	// 编码信息
+	int encode;
+
 	// 端点的数量 
 	// 0 代表 一直读取到 像素为 (0, 0, 0, 0) 的 数据为止
 	int num_endpoints;
@@ -61,6 +64,18 @@ struct line_t {
 	float angle;
 };
 
+// 修复glsl bug 的 取余
+// 某些显卡, 当b为uniform, 且 a % b 为 0 时候，会返回 b
+
+vec2 div_mod(float a, float b) {
+	float d = floor(a / b);
+	float m = mod(a, b);
+	if (m == b) {
+		return vec2(d + 1.0, 0.0);
+	}
+	return vec2(d, m);
+}
+
 // 取 索引 uv
 vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 {
@@ -72,20 +87,23 @@ vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 
 // 解码 索引纹理 
 glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
-{
+{	
 	float value = 255.0 * (v.r + v.a * 256.0);
 
-	float num_endpoints = floor(value / 16384.0);
-    float sdf_and_offset_index = mod(value, 16384.0);
+	vec2 r1 = div_mod(value, 16384.0);
+	float num_endpoints = r1.x;
+    float sdf_and_offset_index = r1.y;
 
-    float sdf_index = floor(sdf_and_offset_index / u_info.x);
-    float offset = mod(sdf_and_offset_index, u_info.x);
+    vec2 r2 = div_mod(sdf_and_offset_index, u_info.x);
+	float sdf_index = r2.x;
+	float offset = r2.y;
 
-    float sdf = sdf_index * u_info.z + u_info.y;
+	float sdf = sdf_index * u_info.z + u_info.y;
 
 	glyphy_index_t index;
 
 	index.sdf = sdf;
+	index.encode = int(value);
 	index.offset = int(offset);
 	index.num_endpoints = int(num_endpoints);
 	
@@ -127,7 +145,10 @@ ivec2 glyphy_float_to_two_nimbles(const float v)
 {
 	int f = glyphy_float_to_byte (v);
 
-	return ivec2 (f / 16, int(mod (float(f), 16.0)));
+
+	vec2 r = div_mod(float(f), 16.0);
+
+	return ivec2 (f / 16, int(r.y));
 }
 
 // returns tan (2 * atan (d))
@@ -225,19 +246,23 @@ float glyphy_arc_extended_dist(const glyphy_arc_t a, const vec2 p)
 }
 
 line_t decode_line(const vec4 v, const ivec2 nominal_size) {
-
-	line_t l;
-	
 	ivec4 iv = glyphy_vec4_to_bytes(v);
 
-	l.distance = float(((iv.r - 128) * 256 + iv.g) - 0x4000) / float (0x1FFF)
-					* max (float (nominal_size.x), float (nominal_size.y));
-	
-	l.angle = float(-((iv.b * 256 + iv.a) - 0x8000)) / float (0x7FFF) * 3.14159265358979;
+	line_t l;
 
+	int ua = iv.b * 256 + iv.a;
+	int ia = ua - 0x8000;
+	l.angle = -float(ia) / float(0x7FFF) * 3.14159265358979;
+
+	int ud = (iv.r - 128) * 256 + iv.g;
+	int id = ud - 0x4000;
+	float d = float(id) / float(0x1FFF);
+	
+	float scale = max(float(nominal_size.x), float(nominal_size.y));
+	
+	l.distance = d * scale;
 	return l;
 }
-
 
 // 重点 计算 sdf 
 float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
@@ -270,13 +295,13 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		vec2 n = vec2(cos(line.angle), sin(line.angle));
 		
 		side = 1.0;
-		min_dist = dot(p - (vec2(nominal_size) * 0.5), n) - line.distance;
+		min_dist = dot(p - 0.5 * vec2(nominal_size), n) - line.distance;
 	} else {
 		glyphy_arc_t closest_arc;
 		glyphy_arc_endpoint_t endpoint = glyphy_arc_endpoint_decode(rgba, nominal_size);
 	
-		vec2 pp = endpoint.p;
 		
+		vec2 pp = endpoint.p;
 		// 1个像素 最多 32次 采样 
 		for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
 			vec4 rgba = vec4(0.0);
@@ -366,8 +391,13 @@ glyph_info_t glyph_info_decode(vec2 v) {
 
 	// mod 256 取低8位
 	// 除4 取低8位中的 高6位
+	
+	vec2 rx = div_mod(v.x, 256.0);
+	vec2 ry = div_mod(v.y, 256.0);
+
+	vec2 r = vec2(rx.y, ry.y);
 	// TODO +2 不了解什么意思 
-	gi.nominal_size = (ivec2(mod(v, 256.)) + 2) / 4;
+	gi.nominal_size = (ivec2(r) + 2) / 4;
 
 	// 去掉 低8位的 信息 
 	gi.atlas_pos = ivec2(v) / 256;
@@ -378,7 +408,7 @@ glyph_info_t glyph_info_decode(vec2 v) {
 // 抗锯齿 1像素 
 // d 在 [a, b] 返回 [0.0, 1.0] 
 float antialias(float d) {
-	float b = 0.3;
+	float b = 0.5;
 	float a = -b;
 
 	float r = (-d - a) / (b - a);
@@ -401,9 +431,9 @@ void main() {
 	float sdist = gsdist * scale;
 
 	float alpha = antialias(sdist);
+
+	gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
 	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
-
-	// gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
 }
 `);
