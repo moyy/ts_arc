@@ -82,8 +82,11 @@ export const closest_arcs_to_cell = (
 
 	// If d is the distance from the center of the square to the nearest arc, then
 	// all nearest arcs to the square must be at most almost [d + half_diagonal] from the center.
+	
 	// 最近的意思：某个半径的 圆内
-	let half_diagonal = c.sub_point(c0).len();
+	// 放大一点点，否则 “我” 会有问题
+	let half_diagonal = 5.0 + c.sub_point(c0).len();
+	
 	// CHANGE_ME: 减少半径
 	let added = half_diagonal;
 	// let added = min_dist + half_diagonal + synth_max;
