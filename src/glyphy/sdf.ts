@@ -1,6 +1,7 @@
 import { Point } from "./geometry/point.js";
 import { Arc, ArcEndpoint } from "./geometry/arc.js";
 import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
+import { Line } from "./geometry/line.js";
 
 /**
  * 点 p 到 所有圆弧的 sdf 的 最小值
@@ -10,7 +11,7 @@ import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
 export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [number, ArcEndpoint[]] => {
     let num_endpoints = endpoints.length;
 
-    let c = p.clone(); 
+    let c = p.clone();
     let p0 = new Point()
     let closest_arc = new Arc(p0, p0, 0);
 
@@ -24,15 +25,39 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
     for (let i = 0; i < num_endpoints; i++) {
         let endpoint = endpoints[i];
 
-        // 无穷代表 Move 语义
         if (endpoint.d == GLYPHY_INFINITY) {
+            // 无穷代表 Move 语义
             p0 = endpoint.p;
             last_ep = endpoint;
             continue;
         }
+        // else if (endpoint.d == 0) 
+        // {
+        //     // 直线 sdf
+        //     let line = Line.from_points(p0, endpoint.p).normalized();
+        //     let sdist = line.n.dot(c.into_vector()) - line.c;
+        //     if (Math.abs(sdist) < min_dist) {
+        //         side = sdist < 0 ? -1 : +1;
+        //         min_dist = Math.abs(sdist);
+
+        //         if (last_ep == null) {
+        //             throw new Error("0 last_ep == null");
+        //         }
+
+        //         let lp: ArcEndpoint = {
+        //             d: GLYPHY_INFINITY,
+        //             p: last_ep.p,
+
+        //             line_key: null,
+        //             line_encode: null,
+        //         };
+        //         effect_endpoints = [lp, endpoint];
+        //     }
+        //     continue;
+        // }
 
         let arc = new Arc(p0, endpoint.p, endpoint.d);
-        
+
         // 在圆弧 夹角范围内
         if (arc.wedge_contains_point(c)) {
             /* TODO This distance has the wrong sign.  Fix */
@@ -61,7 +86,7 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
                 min_dist = udist;
                 side = 0; /* unsure */
                 closest_arc = arc;
-                
+
                 if (last_ep == null) {
                     throw new Error("2 last_ep == null");
                 }

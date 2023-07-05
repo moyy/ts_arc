@@ -46,6 +46,10 @@ export interface BlobArc {
  * @returns {number} 1 外；-1 内
  */
 export const closest_arcs_to_cell = (
+	// cell 坐标
+	cx: number,
+	cy: number,
+
 	// cell 的 左上 和 右下 顶点 坐标
 	c0: Point,
 	c1: Point, /* corners */
@@ -213,6 +217,7 @@ export const glyphy_arc_list_encode_blob2 = (
 
 			// 判断 每个 格子 最近的 圆弧
 			let [sdf, effect_endpoints] = closest_arcs_to_cell(
+				col, row,
 				cp0, cp1,
 				faraway,
 				enlighten_max,
@@ -372,6 +377,9 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let sdf = unit_arc.sdf;
 
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
+				if (offset === 29) {
+					console.error(`offset = ${offset}, sdf = ${sdf}, num_points = ${num_points}, encode = ${encode}`);
+				}
 				indiecs.push(encode);
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
@@ -385,7 +393,9 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("encode index error")
 				}
 
-				unit_arc.show = `${num_points}:${offset}`;
+				// 解码后的 sdf
+				let dsdf = min_sdf + sdf_index * sdf_step;
+				unit_arc.show = `${offset}:${sdf.toFixed(1)}`;
 			}
 		}
 	}
@@ -641,36 +651,6 @@ const travel_data = (blob: BlobArc) => {
 	}
 
 	return [min_sdf, max_sdf]
-}
-
-const get_neibor = (blob: BlobArc, i: number, j: number): [number, number][] => {
-	let neibors: [number, number][] = [];
-
-	let rows = blob.data.length;
-	let cols = blob.data[0].length;
-
-	for (let ii = i - 1; ii <= i + 1; ++ii) {
-		// 边界不算邻居
-		if (ii < 0 || ii >= rows) {
-			continue;
-		}
-
-		for (let jj = j - 1; jj <= j + 1; ++jj) {
-			// 边界不算邻居
-			if (jj < 0 || jj >= cols) {
-				continue;
-			}
-
-			// 本格子不算邻居f
-			if (ii == i && jj == j) {
-				continue;
-			}
-
-			neibors.push([ii, jj])
-		}
-	}
-
-	return neibors;
 }
 
 // rgba

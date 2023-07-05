@@ -7,7 +7,7 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 precision highp float;
 
 #define GLYPHY_INFINITY 1e9
-#define GLYPHY_EPSILON  1e-5
+#define GLYPHY_EPSILON  1e-4
 #define GLYPHY_MAX_D 0.5
 #define GLYPHY_MAX_NUM_ENDPOINTS 16
 
@@ -273,10 +273,12 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		atlas_pos
 	);
 	
-	if (index_info.sdf > u_info.w) {
+	float mm = u_info.w;
+	
+	if (index_info.sdf > mm) {
 		// 全外面
 		return GLYPHY_INFINITY;
-	} else if (index_info.sdf < -u_info.w) {
+	} else if (index_info.sdf < -mm) {
 		// 全里面
 		return -GLYPHY_INFINITY;
 	}
@@ -432,7 +434,7 @@ void main() {
 
 	float alpha = antialias(sdist);
 
-	gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
+	// gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
 	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
 }

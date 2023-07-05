@@ -12,9 +12,14 @@ const MIN_FONT_SIZE = 10;
 
 const TOLERANCE = 10.0 / 1024;
 
-const ENLIGHTEN_MAX = 0.005; /* Per EM */
+// const ENLIGHTEN_MAX = 0.005; /* Per EM */
 
-const EMBOLDEN_MAX = 0.012; /* Per EM */
+// const EMBOLDEN_MAX = 0.012; /* Per EM */
+
+const ENLIGHTEN_MAX = 0.0001; /* Per EM */
+
+const EMBOLDEN_MAX = 0.0001; /* Per EM */
+
 
 // 取 char对应的 arc
 // 实现 encode_ft_glyph
