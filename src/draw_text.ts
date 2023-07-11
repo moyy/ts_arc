@@ -174,8 +174,6 @@ export class DrawText {
         let i = Math.floor(x / cellSize);
         let j = Math.floor(y / cellSize);
 
-        console.warn(`draw_network_endpoints: ${i}, ${j}`);
-
         if (j < 0 || j >= this.last_arcs.data.length) {
             return;
         }
@@ -204,7 +202,8 @@ export class DrawText {
 
             // 在端点位置画出黑点
             ctx.beginPath();
-            console.log(`draw_network_endpoints: ${endpoint.p.x}, ${endpoint.p.y}, d = ${endpoint.d}`);
+            
+            console.log(`draw_network_endpoints: (${i}, ${j}): p = (${endpoint.p.x}, ${endpoint.p.y}), d = ${endpoint.d}`);
             ctx.arc(endpoint.p.x, endpoint.p.y, 20, 0, 2 * Math.PI);
             ctx.fill();
         }
