@@ -380,9 +380,6 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let sdf = unit_arc.sdf;
 
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
-				if (offset === 29) {
-					console.error(`offset = ${offset}, sdf = ${sdf}, num_points = ${num_points}, encode = ${encode}`);
-				}
 				indiecs.push(encode);
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
