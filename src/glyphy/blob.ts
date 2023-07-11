@@ -21,7 +21,9 @@ export interface UnitArc {
 
 	show: string, // 用于Canvas显示的字符串
 
-	data: ArcEndpoint[]
+	data: ArcEndpoint[],
+
+	origin_data: ArcEndpoint[], // 原始数据, 用于显示 点 (因为data 对 1, 0 做了优化)
 }
 
 export interface BlobArc {
@@ -210,6 +212,7 @@ export const glyphy_arc_list_encode_blob2 = (
 				sdf: 0,
 				show: "",
 				data: [],
+				origin_data: [],
 			};
 			row_arcs.push(unit_arc)
 
@@ -266,6 +269,9 @@ export const glyphy_arc_list_encode_blob2 = (
 				};
 
 				unit_arc.data.push(line_data);
+				
+				unit_arc.origin_data.push(start);
+				unit_arc.origin_data.push(end);
 
 				continue;
 			}
@@ -395,7 +401,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 
 				// 解码后的 sdf
 				let dsdf = min_sdf + sdf_index * sdf_step;
-				unit_arc.show = `${offset}:${sdf.toFixed(1)}`;
+				unit_arc.show = `${num_points}:${dsdf.toFixed(1)}`;
 			}
 		}
 	}

@@ -81,7 +81,6 @@ vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 {
 	ivec2 cell = ivec2 (clamp (floor(p), vec2 (0.0, 0.0), vec2(nominal_size - 1)));
 
-	// cell.y = nominal_size.y - 1 - cell.y;
 	return vec2(cell) / vec2(nominal_size);
 }
 

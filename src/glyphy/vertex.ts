@@ -63,8 +63,6 @@ export const add_glyph_vertices = (
 	r.push(encode_corner(1, 0, gi, font_size));
 	r.push(encode_corner(1, 1, gi, font_size));
 
-	console.log(`add_glyph_vertices`, r)
-
 	if (extents) {
 		extents.clear();
 		for (let i = 0; i < 4; i++) {

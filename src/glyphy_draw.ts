@@ -62,14 +62,14 @@ export const get_char_arc = (
         glyphy_outline_winding_from_even_odd(endpoints, false);
     }
 
-    console.log("")
-    console.log("============== 03. 应用奇偶规则后的结果：");
-    let s = []
-    for (let r of endpoints) {
-        s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
-    }
-    console.log(s.join(",\n"));
-    console.log("");
+    // console.log("")
+    // console.log("============== 03. 应用奇偶规则后的结果：");
+    // let s = []
+    // for (let r of endpoints) {
+    //     s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
+    // }
+    // console.log(s.join(",\n"));
+    // console.log("");
 
     let extents = new AABB();
 
@@ -105,22 +105,6 @@ const get_endpoints = (
     endpoints: ArcEndpoint[];
 } => {
 
-    {
-        let radius = 30
-        let p0 = new Point(radius, 0);
-        let p1 = new Point(0, radius);
-
-        console.log(`p0 = (${p0.x}, ${p0.y}), p1 = (${p1.x}, ${p1.y})`)
-        for (let i = 0; i <= 16; i++) {
-            let angle = i * Math.PI / 8;
-
-            let p2 = new Point(radius * Math.cos(angle), radius * Math.sin(angle));
-
-            let arc = Arc.from_points(p1, p0, p2, false);
-            console.log(`angle = ${angle}, p2 = (${p2.x}, ${p2.y}), d = ${arc.d}`)
-        }
-    }
-
     const glyph = font.charToGlyph(char);
     const glyphPath = glyph.getPath(0, 0, size);
 
@@ -131,7 +115,6 @@ const get_endpoints = (
     let accumulate = new GlyphyArcAccumulator();
     accumulate.tolerance = tolerance_per_em;
 
-    console.log("============== 01. 原始路径：");
     let last_point = [Infinity, Infinity];
 
     let cmds, flip_y;
@@ -139,6 +122,7 @@ const get_endpoints = (
     flip_y = -1;
     cmds = glyphPath.commands;
 
+    console.log("============== 01. 原始路径：");
     for (let cmd of cmds) {
         let tx, ty, tx1, ty1;
 
@@ -224,14 +208,14 @@ const get_endpoints = (
         }
     };
 
-    console.log("")
-    console.log(`================= 02. accumulate 结果: ${accumulate.result.length}`);
-    let s = []
-    for (let r of accumulate.result) {
-        s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
-    }
-    console.log(s.join(",\n"));
-    console.log("")
+    // console.log("")
+    // console.log(`================= 02. accumulate 结果: ${accumulate.result.length}`);
+    // let s = []
+    // for (let r of accumulate.result) {
+    //     s.push(`    { x: ${r.p.x}, y: ${r.p.y}, d: ${r.d} }`);
+    // }
+    // console.log(s.join(",\n"));
+    // console.log("")
 
     return {
         svg_paths,

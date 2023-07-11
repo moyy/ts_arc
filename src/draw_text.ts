@@ -1,6 +1,7 @@
 import { mat4 } from 'gl-matrix';
 import { BlobArc } from 'glyphy/blob.js';
 import { ArcEndpoint } from 'glyphy/geometry/arc.js';
+import { GLYPHY_INFINITY } from 'glyphy/util';
 import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
 import { get_char_arc, to_arc_cmds } from 'glyphy_draw.js';
 import * as opentype from 'opentype.js';
@@ -185,20 +186,26 @@ export class DrawText {
         // 从arcs.data中获取对应的数据
         let unitArc = this.last_arcs.data[j][i];
 
-        // 0 和 1 有 特殊含义
-        if (unitArc.data.length < 2) {
-            return;
+        let show_data = unitArc.data;
+        if (show_data.length === 1) {
+            show_data = unitArc.origin_data;
         }
 
         let ctx = this.ctx;
         ctx.save();
         ctx.translate(this.init_x, this.init_y);
         ctx.scale(1, -1);
-        for (let k = 0; k < unitArc.data.length; k++) {
+        for (let k = 0; k < show_data.length; k++) {
             // 注意，这里假设data中所有的元素都是ArcEndpoint类型的
-            let endpoint = unitArc.data[k] as ArcEndpoint;
+            let endpoint = show_data[k] as ArcEndpoint;
 
-            ctx.fillStyle = 'black';
+            if (endpoint.d === GLYPHY_INFINITY) {
+                ctx.fillStyle = 'red';
+            } else if (endpoint.d === 0) {
+                ctx.fillStyle = 'yellow';
+            } else {
+                ctx.fillStyle = 'black';
+            }
 
             // 在端点位置画出黑点
             ctx.beginPath();
@@ -248,7 +255,7 @@ export class DrawText {
             let scale = font_size * window.devicePixelRatio;
             let m = mat4.create();
             mat4.identity(m);
-            mat4.translate(m, m, [100, font_size, 0.0]);
+            mat4.translate(m, m, [100, font_size / 2, 0.0]);
             mat4.scale(m, m, [scale, scale, 1.0]);
             g.mesh?.material?.setWorldMatrix(m);
 
@@ -354,14 +361,14 @@ export class DrawText {
 
         let [cmds, pts] = to_arc_cmds(endpoints);
 
-        console.log("")
-        console.log(`============== 04. 圆弧`);
-        for (let cmd_array of cmds) {
-            for (let cmd of cmd_array) {
-                console.log(`    ${cmd}`);
-            }
-        }
-        console.log("")
+        // console.log("")
+        // console.log(`============== 04. 圆弧`);
+        // for (let cmd_array of cmds) {
+        //     for (let cmd of cmd_array) {
+        //         console.log(`    ${cmd}`);
+        //     }
+        // }
+        // console.log("")
 
         let cmd_s = [];
         for (let cmd_array of cmds) {
