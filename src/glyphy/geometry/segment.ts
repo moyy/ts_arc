@@ -24,9 +24,10 @@ export class Segment {
      * 到 点p的距离
      */
     distance_to_point(p: Point) {
-        if (this.p0 == this.p1)
+        if (this.p0 == this.p1) {
             return 0;
-
+        }
+        
         // Check if z is between p0 and p1.
         let temp = Line.from_points(this.p0, this.p1);
 

@@ -45,10 +45,20 @@ export const create_arc_endpoint = (x: number, y: number, d: number): ArcEndpoin
     }
 }
 
+// d 几何意义 为 tan( 圆心角 / 4 )
+// 绝对值：圆心角 [0, 2 PI]，圆心角 / 4 [0, PI / 2]，tan [0, +∞]
+// 
+// 区分 小圆弧 还是 大圆弧
+//    小圆弧，圆心角 < PI，圆心角 / 4 < PI / 4，tan < 1，|d| < 1
+//    大圆弧，圆心角 > PI，圆心角 / 4 > PI / 4，tan > 1，|d| > 1
+// 
+// d符号，表示圆心的方向（在 圆弧垂线的左边，还是右边）
+//    d > 0，和 (终 - 起).otho() 同向
+//    d < 0，和 上面 相反
 export class Arc {
     p0: Point;
     p1: Point;
-    d: number;  // 几何意义: 2.0 * atan(d) = 圆弧角度；d = 0.0 时，为直线
+    d: number;
 
     /**
      * 构造函数
@@ -181,6 +191,20 @@ export class Arc {
 
     /**
      * 计算圆弧 的 切线向量对
+     * 
+     * 圆弧切线，就是 圆弧端点在圆上的切线
+     * 
+     * 切线向量 和 圆心到圆弧端点的向量 垂直
+     * 
+     * 算法：以 半弦 为基准，计算切线向量
+     * 
+     * 圆心 为 O，起点是A，终点是B
+     * 
+     * 以 A 为圆心，半弦长 为半径，画一个圆，和 AO 相交于 点 C
+     * 
+     * |AC| = |AB| / 2
+     * 
+     * 将有向线段 AC 分解到 半弦 和 半弦 垂线上，分别得到下面的 result_dp 和 pp
      */
     tangents(): Pair<Vector> {
         const dp = (this.p1.sub_point(this.p0)).scale(0.5);
@@ -189,8 +213,8 @@ export class Arc {
         const result_dp = dp.scale(cos2atan(this.d));
 
         return {
-            first: result_dp.add(pp),
-            second: result_dp.sub(pp),
+            first: result_dp.add(pp),  // 起点 切线向量，注：没有单位化
+            second: result_dp.sub(pp), // 终点 切线向量，注：没有单位化
         };
     }
 
@@ -215,14 +239,26 @@ export class Arc {
     }
 
     /**
-     * 判断圆弧的楔形是否包含给定的点
+     * 判断 p 是否包含在 圆弧对扇形的夹角内。
+     * 
+     * 包括 圆弧边缘 的 线
+     * 
      */
     wedge_contains_point(p: Point) {
         const t = this.tangents();
 
         if (Math.abs(this.d) <= 1) {
+            // 小圆弧，夹角 小于等于 PI
+            // 在 夹角内，意味着 下面两者 同时成立：
+            //     向量 <P0, P> 和 起点切线 成 锐角
+            //     向量 <P1, P> 和 终点切线 是 钝角
             return (p.sub_point(this.p0)).dot(t.first) >= 0 && (p.sub_point(this.p1)).dot(t.second) <= 0;
         } else {
+            // 大圆弧，夹角 大于 PI
+            // 如果 点 在 小圆弧 内，那么：下面两者 同时成立
+            //     向量 <P0, P> 和 起点切线 成 钝角
+            //     向量 <P1, P> 和 终点切线 是 锐角
+            // 所以这里要 取反
             return (p.sub_point(this.p0)).dot(t.first) >= 0 || (p.sub_point(this.p1)).dot(t.second) <= 0;
         }
     }
@@ -232,6 +268,7 @@ export class Arc {
      */
     distance_to_point(p: Point) {
         if (Math.abs(this.d) < 1e-5) {
+            // d = 0, 当 线段 处理
             const arc_segment = new Segment(this.p0, this.p1);
             return arc_segment.distance_to_point(p);
         }
@@ -239,6 +276,10 @@ export class Arc {
         const difference = this.sub(p);
 
         if (this.wedge_contains_point(p) && Math.abs(this.d) > 1e-5) {
+            // 在 夹角内
+
+            // 距离的绝对值 就是 |点到圆心的距离 - 半径|
+            // 符号，看 difference 的 neggative
             return Math.abs(p.distance_to_point(this.center()) - this.radius()) * (difference.negative ? -1 : 1);
         }
 
@@ -254,14 +295,17 @@ export class Arc {
     squared_distance_to_point(p: Point) {
         if (Math.abs(this.d) < 1e-5) {
             const arc_segment = new Segment(this.p0, this.p1);
+            // 点 到 线段 的 距离 的 平方
             return arc_segment.squared_distance_to_point(p);
         }
 
         if (this.wedge_contains_point(p) && Math.abs(this.d) > 1e-5) {
+            // 在圆弧的 夹角 里面，sdf = 点到圆心的距离 - 半径
             const answer = p.distance_to_point(this.center()) - this.radius();
             return answer * answer;
         }
 
+        // 在 夹角外，就是 点 到 啷个端点距离的 最小值
         const d1 = p.squared_distance_to_point(this.p0);
         const d2 = p.squared_distance_to_point(this.p1);
 
@@ -272,12 +316,22 @@ export class Arc {
      * 计算点到圆弧的扩展距离
      */
     extended_dist(p: Point) {
+        // m 是 P0 P1 的 中点
         const m = this.p0.lerp(0.5, this.p1);
+        
+        // dp 是 向量 <P0, P1>
         const dp = this.p1.sub_point(this.p0);
+        
+        // pp 是 dp 的 正交向量，逆时针
         const pp = dp.ortho();
+
+        // d2 是 圆弧的 圆心角一半 的正切
         const d2 = tan2atan(this.d);
 
         if (p.sub_point(m).dot(p.sub_point(this.p1)) < 0) {
+            // 如果 <M, P> 和 <P1, P> 夹角 为 钝角
+
+            // 距离 = <P0, P> 和 <P0, P1> 的 夹角 的 正切
             return (p.sub_point(this.p0)).dot((pp.add(dp.scale(d2))).normalized());
         } else {
             return (p.sub_point(this.p1)).dot((pp.sub(dp.scale(d2))).normalized());
