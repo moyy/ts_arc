@@ -248,7 +248,7 @@ export class DrawText {
             let scale = font_size * window.devicePixelRatio;
             let m = mat4.create();
             mat4.identity(m);
-            mat4.translate(m, m, [100, 100, 0.0]);
+            mat4.translate(m, m, [100, font_size, 0.0]);
             mat4.scale(m, m, [scale, scale, 1.0]);
             g.mesh?.material?.setWorldMatrix(m);
 

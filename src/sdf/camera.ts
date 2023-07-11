@@ -14,6 +14,6 @@ export class Camera {
     }
 
     setSize(w: number, h: number) {
-        mat4.ortho(this.uProj, 0, w, h, 0, -1.0, 1.0);
+        mat4.ortho(this.uProj, 0, w, 0, h, -1.0, 1.0);
     }
 }

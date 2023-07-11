@@ -266,6 +266,7 @@ const createDataTexture = (
 
     gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.length / 4, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
@@ -292,6 +293,7 @@ const createIndexTexture = (
     
     gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, tex_w, tex_h, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, data);
 
