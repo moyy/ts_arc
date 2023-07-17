@@ -289,6 +289,7 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	float side = index_info.sdf < 0.0 ? -1.0 : 1.0;
 	float min_dist = GLYPHY_INFINITY;
 	
+	// 注：N卡，和 高通 的 显卡，纹理 需要 加 0.5像素
 	float offset = 0.5 + float(index_info.offset);
 
 	vec4 rgba = texture2D(u_data_tex, vec2(offset / u_info.x, 0.0));
