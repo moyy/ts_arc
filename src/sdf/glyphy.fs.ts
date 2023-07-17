@@ -79,9 +79,9 @@ vec2 div_mod(float a, float b) {
 // 取 索引 uv
 vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
 {
-	ivec2 cell = ivec2 (clamp (floor(p), vec2 (0.0, 0.0), vec2(nominal_size - 1)));
+	vec2 cell = vec2(0.5) + clamp( floor(p), vec2(0.0), vec2(nominal_size - 1) );
 
-	return vec2(cell) / vec2(nominal_size);
+	return cell / vec2(nominal_size);
 }
 
 // 解码 索引纹理 
@@ -225,7 +225,9 @@ bool glyphy_arc_wedge_contains(const glyphy_arc_t a, const vec2 p)
 
 glyphy_index_t get_glyphy_index(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 	vec2 index_uv = get_index_uv(p, nominal_size);
+	
 	vec4 c = texture2D(u_index_tex, index_uv).rgba;
+	
 	return decode_glyphy_index(c, nominal_size);
 }
 
@@ -286,8 +288,10 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 
 	float side = index_info.sdf < 0.0 ? -1.0 : 1.0;
 	float min_dist = GLYPHY_INFINITY;
+	
+	float offset = 0.5 + float(index_info.offset);
 
-	vec4 rgba = texture2D(u_data_tex, vec2(float(index_info.offset) / u_info.x, 0.0));
+	vec4 rgba = texture2D(u_data_tex, vec2(offset / u_info.x, 0.0));
 	
 	// 线段 特殊处理
 	if(index_info.num_endpoints == 1) {
@@ -307,12 +311,14 @@ float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
 		for(int i = 1; i < GLYPHY_MAX_NUM_ENDPOINTS; i++) {
 			vec4 rgba = vec4(0.0);
 			if(index_info.num_endpoints == 0) {
-				rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+				float offset = 0.5 + float(index_info.offset + i);
+				rgba = texture2D(u_data_tex, vec2(offset / u_info.x, 0.0));
 				if (rgba == vec4(0.0)) {
 					break;
 				}
 			} else if (i < index_info.num_endpoints) {
-				rgba = texture2D(u_data_tex, vec2(float(index_info.offset + i) / u_info.x, 0.0));
+				float offset = 0.5 + float(index_info.offset + i);
+				rgba = texture2D(u_data_tex, vec2(offset / u_info.x, 0.0));
 			} else {
 				break;
 			}
