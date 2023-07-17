@@ -116,23 +116,12 @@ export const closest_arcs_to_cell = (
 		let arc = near_arcs[i];
 
 		if (i == 0 || !p1.equals(arc.p0)) {
-			let endpoint = {
-				p: arc.p0.clone(),
-				d: GLYPHY_INFINITY,
-				line_encode: null,
-				line_key: null,
-			};
+			let endpoint = new ArcEndpoint(arc.p0.x, arc.p0.y, GLYPHY_INFINITY);
 			near_endpoints.push(endpoint);
 			p1 = arc.p0;
 		}
 
-		let endpoint = {
-			p: arc.p1,
-			d: arc.d,
-			line_encode: null,
-			line_key: null,
-		};
-
+		let endpoint = new ArcEndpoint(arc.p1.x, arc.p1.y, arc.d);
 		near_endpoints.push(endpoint);
 		p1 = arc.p1;
 	}
@@ -221,6 +210,10 @@ export const glyphy_arc_list_encode_blob2 = (
 
 			near_endpoints.length = 0;
 
+			if (col === 20 && row === 0) {
+				console.log(`col: ${col}, row: ${row}, cp0: ${cp0.x}, ${cp0.y}, cp1: ${cp1.x}, ${cp1.y}`)
+			}
+
 			// 判断 每个 格子 最近的 圆弧
 			let [sdf, effect_endpoints] = closest_arcs_to_cell(
 				col, row,
@@ -261,12 +254,9 @@ export const glyphy_arc_list_encode_blob2 = (
 				let line_key = get_line_key(near_endpoints[0], near_endpoints[1]);
 				let le = line_encode(line);
 				
-				let line_data: ArcEndpoint = {
-					p: new Point(),
-					d: 0.0,
-					line_key,
-					line_encode: le,
-				};
+				let line_data = new ArcEndpoint(0.0, 0.0, 0.0);
+				line_data.line_key = line_key;
+				line_data.line_encode = le;
 
 				unit_arc.data.push(line_data);
 				

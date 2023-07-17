@@ -27,21 +27,24 @@ export interface ErrorValue {
     value: number;
 }
 
-export interface ArcEndpoint {
+export class ArcEndpoint {
     p: Point;
     d: number;
 
     // 线段特殊处理，只有一个值
-    line_key: null | string,
-    line_encode: null | [number, number, number, number]; // rgba
-}
+    line_key: null | string;
 
-export const create_arc_endpoint = (x: number, y: number, d: number): ArcEndpoint => {
-    return {
-        p: new Point(x, y),
-        d: d,
-        line_key: null,
-        line_encode: null,
+    line_encode: null | [number, number, number, number]; // rgba
+
+    constructor(x: number, y: number, d: number) {
+        this.p = new Point(x, y);
+        this.d = d;
+        this.line_key = null;
+        this.line_encode = null;
+    }
+
+    clone() {
+        return new ArcEndpoint(this.p.x, this.p.y, this.d);
     }
 }
 
@@ -328,13 +331,17 @@ export class Arc {
         // d2 是 圆弧的 圆心角一半 的正切
         const d2 = tan2atan(this.d);
 
-        if (p.sub_point(m).dot(p.sub_point(this.p1)) < 0) {
+        if (p.sub_point(m).dot(this.p1.sub_point(m)) < 0) {
             // 如果 <M, P> 和 <P1, P> 夹角 为 钝角
+            // 代表 P 在 直径为 <M, P1> 的 圆内
 
-            // 距离 = <P0, P> 和 <P0, P1> 的 夹角 的 正切
-            return (p.sub_point(this.p0)).dot((pp.add(dp.scale(d2))).normalized());
+            // <P0, P> 与 N1 方向的 投影
+            // N1 = pp + dp * tan(angle / 2)
+            return (p.sub_point(this.p0)).dot( (pp.add(dp.scale(d2))).normalized() );
         } else {
-            return (p.sub_point(this.p1)).dot((pp.sub(dp.scale(d2))).normalized());
+            // <P1, P> 与 N2 的 点积
+            // N2 = pp - dp * tan(angle / 2)
+            return (p.sub_point(this.p1)).dot( (pp.sub(dp.scale(d2))).normalized() );
         }
     }
 

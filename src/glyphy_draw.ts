@@ -12,10 +12,6 @@ const MIN_FONT_SIZE = 10;
 
 const TOLERANCE = 10.0 / 1024;
 
-// const ENLIGHTEN_MAX = 0.005; /* Per EM */
-
-// const EMBOLDEN_MAX = 0.012; /* Per EM */
-
 const ENLIGHTEN_MAX = 0.0001; /* Per EM */
 
 const EMBOLDEN_MAX = 0.0001; /* Per EM */
@@ -56,6 +52,8 @@ export const get_char_arc = (
     grid_size = grid_size < 20 ? 20 : grid_size;
 
     let unit_size = upem / grid_size;
+
+    console.log(`####################### grid_size = ${grid_size}, unit_size = ${unit_size}`)
 
     if (endpoints.length > 0) {
         // 用奇偶规则，计算 每个圆弧的 环绕数

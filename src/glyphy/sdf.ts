@@ -1,7 +1,6 @@
 import { Point } from "./geometry/point.js";
 import { Arc, ArcEndpoint } from "./geometry/arc.js";
-import { GLYPHY_EPSILON, GLYPHY_INFINITY, is_zero } from "./util.js";
-import { Line } from "./geometry/line.js";
+import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
 
 /**
  * SDF 算法
@@ -13,7 +12,7 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
 
     let c = p.clone();
     let p0 = new Point()
-    let closest_arc = new Arc(p0, p0, 0);
+    let closest_arc = new Arc(p0.clone(), p0.clone(), 0);
 
     let min_dist = GLYPHY_INFINITY;
     let side = 0;
@@ -27,13 +26,13 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
 
         if (endpoint.d == GLYPHY_INFINITY) {
             // 无穷代表 Move 语义
-            p0 = endpoint.p;
-            last_ep = endpoint;
+            p0 = endpoint.p.clone();
+            last_ep = endpoint.clone();
             continue;
         }
 
         // 当 d = 0 时候，代表线段
-        let arc = new Arc(p0, endpoint.p, endpoint.d);
+        let arc = new Arc(p0.clone(), endpoint.p.clone(), endpoint.d);
 
         if (arc.wedge_contains_point(c)) {
             // 在 扇形夹角范围内
@@ -49,13 +48,8 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
                     throw new Error("1 last_ep == null");
                 }
 
-                let lp: ArcEndpoint = {
-                    d: GLYPHY_INFINITY,
-                    p: last_ep.p,
-                    line_key: null,
-                    line_encode: null,
-                };
-                effect_endpoints = [lp, endpoint];
+                let lp = new ArcEndpoint(last_ep.p.x, last_ep.p.y, GLYPHY_INFINITY);
+                effect_endpoints = [lp.clone(), endpoint.clone()];
                 side = sdist >= 0 ? -1 : +1;
             }
         } else {
@@ -79,14 +73,8 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
                     throw new Error("2 last_ep == null");
                 }
 
-                let lp: ArcEndpoint = {
-                    d: GLYPHY_INFINITY,
-                    p: last_ep.p,
-                    line_key: null,
-                    line_encode: null,
-
-                };
-                effect_endpoints = [lp, endpoint];
+                let lp = new ArcEndpoint(last_ep.p.x, last_ep.p.y, GLYPHY_INFINITY);
+                effect_endpoints = [lp.clone(), endpoint.clone()];
 
             } else if (side == 0 && udist == min_dist) {
                 // 如果 更换了 端点 之后，距离和原来相同，但符号未知
@@ -109,8 +97,8 @@ export const glyphy_sdf_from_arc_list = (endpoints: ArcEndpoint[], p: Point): [n
             }
         }
 
-        p0 = endpoint.p;
-        last_ep = endpoint;
+        p0 = endpoint.p.clone();
+        last_ep = endpoint.clone();
     }
 
     if (side == 0) {

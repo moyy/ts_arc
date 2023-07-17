@@ -98,12 +98,7 @@ export class GlyphyArcAccumulator {
     }
 
     emit(p: Point, d: number) {
-        let endpoint = { 
-            p, 
-            d,
-            line_key: null,
-            line_encode: null,
-        };
+        let endpoint = new ArcEndpoint(p.x, p.y, d);
         this.result.push(endpoint);
 
         this.num_endpoints++;

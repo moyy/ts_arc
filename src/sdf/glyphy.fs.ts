@@ -7,9 +7,9 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 precision highp float;
 
 #define GLYPHY_INFINITY 1e9
-#define GLYPHY_EPSILON  1e-4
+#define GLYPHY_EPSILON  1e-6
 #define GLYPHY_MAX_D 0.5
-#define GLYPHY_MAX_NUM_ENDPOINTS 16
+#define GLYPHY_MAX_NUM_ENDPOINTS 32
 
 uniform vec4 uColor; 
 
@@ -433,8 +433,6 @@ void main() {
 
 	float alpha = antialias(sdist);
 
-	// gl_FragColor = vec4(-gsdist, 0.0, 0.0, 1.0);
-	
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
 }
 `);
