@@ -389,9 +389,14 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 					throw new Error("encode index error")
 				}
 
+				// if (i === 16 && j === 15) {
+				// 	console.warn(`encode index: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, encode: ${encode}`);
+				// }
+
 				// 解码后的 sdf
 				let dsdf = min_sdf + sdf_index * sdf_step;
-				unit_arc.show = `${num_points}:${dsdf.toFixed(1)}`;
+				// unit_arc.show = `${num_points}:${dsdf.toFixed(1)}`;
+				unit_arc.show = `${Math.round(offset / max_offset * 255)}`;
 			}
 		}
 	}

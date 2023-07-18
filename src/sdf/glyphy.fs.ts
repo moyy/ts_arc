@@ -76,39 +76,6 @@ vec2 div_mod(float a, float b) {
 	return vec2(d, m);
 }
 
-// 取 索引 uv
-vec2 get_index_uv(const vec2 p, const ivec2 nominal_size)
-{
-	vec2 cell = vec2(0.5) + clamp( floor(p), vec2(0.0), vec2(nominal_size - 1) );
-
-	return cell / vec2(nominal_size);
-}
-
-// 解码 索引纹理 
-glyphy_index_t decode_glyphy_index(const vec4 v, const ivec2 nominal_size)
-{	
-	float value = 255.0 * (v.r + v.a * 256.0);
-
-	vec2 r1 = div_mod(value, 16384.0);
-	float num_endpoints = r1.x;
-    float sdf_and_offset_index = r1.y;
-
-    vec2 r2 = div_mod(sdf_and_offset_index, u_info.x);
-	float sdf_index = r2.x;
-	float offset = r2.y;
-
-	float sdf = sdf_index * u_info.z + u_info.y;
-
-	glyphy_index_t index;
-
-	index.sdf = sdf;
-	index.encode = int(value);
-	index.offset = int(offset);
-	index.num_endpoints = int(num_endpoints);
-	
-	return index;
-}
-
 // 超过 最大值的 一半，就是 无穷 
 bool glyphy_isinf(const float v)
 {
@@ -200,7 +167,7 @@ float glyphy_arc_wedge_signed_dist(const glyphy_arc_t a, const vec2 p)
 }
 
 // 解码 arc 端点 
-glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const ivec2 nominal_size)
+glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const vec2 nominal_size)
 {
 	vec2 p = (vec2 (glyphy_float_to_two_nimbles (v.a)) + v.gb) / 16.0;
 	float d = v.r;
@@ -210,7 +177,7 @@ glyphy_arc_endpoint_t glyphy_arc_endpoint_decode(const vec4 v, const ivec2 nomin
 		d = float(glyphy_float_to_byte(d) - 128) * GLYPHY_MAX_D / 127.0;
 	}
 
-	p *= vec2(nominal_size);
+	p *= nominal_size;
 	return glyphy_arc_endpoint_t (p, d);
 }
 
@@ -221,14 +188,6 @@ bool glyphy_arc_wedge_contains(const glyphy_arc_t a, const vec2 p)
 
 	return dot (p - a.p0, (a.p1 - a.p0) * mat2(1,  d2, -d2, 1)) >= 0.0 &&
 		dot (p - a.p1, (a.p1 - a.p0) * mat2(1, -d2,  d2, 1)) <= 0.0;
-}
-
-glyphy_index_t get_glyphy_index(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
-	vec2 index_uv = get_index_uv(p, nominal_size);
-	
-	vec4 c = texture2D(u_index_tex, index_uv).rgba;
-	
-	return decode_glyphy_index(c, nominal_size);
 }
 
 // 点 到 圆弧 的 距离
@@ -246,7 +205,7 @@ float glyphy_arc_extended_dist(const glyphy_arc_t a, const vec2 p)
 	}
 }
 
-line_t decode_line(const vec4 v, const ivec2 nominal_size) {
+line_t decode_line(const vec4 v, const vec2 nominal_size) {
 	ivec4 iv = glyphy_vec4_to_bytes(v);
 
 	line_t l;
@@ -259,20 +218,59 @@ line_t decode_line(const vec4 v, const ivec2 nominal_size) {
 	int id = ud - 0x4000;
 	float d = float(id) / float(0x1FFF);
 	
-	float scale = max(float(nominal_size.x), float(nominal_size.y));
+	float scale = max(nominal_size.x, nominal_size.y);
 	
 	l.distance = d * scale;
 	return l;
 }
 
-// 重点 计算 sdf 
-float glyphy_sdf(const vec2 p, const ivec2 nominal_size, ivec2 atlas_pos) {
+// 解码 索引纹理 
+glyphy_index_t decode_glyphy_index(const vec4 v, const vec2 nominal_size)
+{	
+	float value = 255.0 * (v.r + v.a * 256.0);
 
-	glyphy_index_t index_info = get_glyphy_index(
-		p, 
-		nominal_size, 
-		atlas_pos
-	);
+	vec2 r1 = div_mod(value, 16384.0);
+	float num_endpoints = r1.x;
+    float sdf_and_offset_index = r1.y;
+
+    vec2 r2 = div_mod(sdf_and_offset_index, u_info.x);
+	float sdf_index = r2.x;
+	float offset = r2.y;
+
+	float sdf = sdf_index * u_info.z + u_info.y;
+
+	glyphy_index_t index;
+
+	index.sdf = sdf;
+	index.encode = int(value);
+	index.offset = int(offset);
+	index.num_endpoints = int(num_endpoints);
+	
+	return index;
+}
+
+// 取 索引 uv
+vec2 get_index_uv(vec2 p, vec2 nominal_size)
+{
+	p = floor(p);
+	vec2 cell = vec2(0.5) + clamp(p, vec2(0.0), nominal_size - vec2(1.0) );
+
+	return cell / vec2(nominal_size);
+}
+
+glyphy_index_t get_glyphy_index(const vec2 p, const vec2 nominal_size) {
+	vec2 index_uv = get_index_uv(p, nominal_size);
+	
+	vec4 c = texture2D(u_index_tex, index_uv).rgba;
+	
+	return decode_glyphy_index(c, nominal_size);
+}
+
+
+// 重点 计算 sdf 
+float glyphy_sdf(const vec2 p, vec2 nominal_size, vec2 atlas_pos) {
+
+	glyphy_index_t index_info = get_glyphy_index(p, nominal_size);
 	
 	float mm = u_info.w;
 	
@@ -383,10 +381,10 @@ varying vec4 v_glyph;
 
 struct glyph_info_t {
 	// 网格 宽度，高度 的 格子数量 
-	ivec2 nominal_size;
+	vec2 nominal_size;
 
 	// 索引纹理坐标
-	ivec2 atlas_pos;
+	vec2 atlas_pos;
 
 	float sdf;
 };
@@ -404,12 +402,15 @@ glyph_info_t glyph_info_decode(vec2 v) {
 	vec2 ry = div_mod(v.y, 256.0);
 
 	vec2 r = vec2(rx.y, ry.y);
+	
 	// TODO +2 不了解什么意思 
-	gi.nominal_size = (ivec2(r) + 2) / 4;
+	ivec2 size = (ivec2(r) + 2) / 4;
+	gi.nominal_size = vec2(size);
 
 	// 去掉 低8位的 信息 
-	gi.atlas_pos = ivec2(v) / 256;
-
+	ivec2 pos = ivec2(v) / 256;
+	gi.atlas_pos = vec2(pos);
+	
 	return gi;
 }
 
