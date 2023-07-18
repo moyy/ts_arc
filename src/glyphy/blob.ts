@@ -376,6 +376,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let sdf = unit_arc.sdf;
 
 				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
+				
 				indiecs.push(encode);
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
@@ -396,7 +397,8 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				// 解码后的 sdf
 				let dsdf = min_sdf + sdf_index * sdf_step;
 				// unit_arc.show = `${num_points}:${dsdf.toFixed(1)}`;
-				unit_arc.show = `${Math.round(offset / max_offset * 255)}`;
+				unit_arc.show = `${num_points}`;
+				// unit_arc.show = `${offset}`;
 			}
 		}
 	}

@@ -7,7 +7,7 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 precision highp float;
 
 #define GLYPHY_INFINITY 1e9
-#define GLYPHY_EPSILON  1e-6
+#define GLYPHY_EPSILON  1e-5
 #define GLYPHY_MAX_D 0.5
 #define GLYPHY_MAX_NUM_ENDPOINTS 32
 
@@ -225,26 +225,49 @@ line_t decode_line(const vec4 v, const vec2 nominal_size) {
 }
 
 // 解码 索引纹理 
-glyphy_index_t decode_glyphy_index(const vec4 v, const vec2 nominal_size)
+glyphy_index_t decode_glyphy_index(vec4 v, const vec2 nominal_size)
 {	
-	float value = 255.0 * (v.r + v.a * 256.0);
+	ivec4 c = glyphy_vec4_to_bytes(v);
 
-	vec2 r1 = div_mod(value, 16384.0);
-	float num_endpoints = r1.x;
-    float sdf_and_offset_index = r1.y;
+	int value = c.r + 256 * c.a;
 
-    vec2 r2 = div_mod(sdf_and_offset_index, u_info.x);
-	float sdf_index = r2.x;
-	float offset = r2.y;
+	int v2 = value;
 
-	float sdf = sdf_index * u_info.z + u_info.y;
+	// 注：移动端，int 范围有可能是 [-2^15, 2^15)
+	if (value < 0) {
+		v2 += 32766;
+		v2 += 2;
+	}
+
+	int num_endpoints = v2 / 16384;
+	int sdf_and_offset_index = v2 - 16384 * num_endpoints;
+	if (value < 0) {
+		num_endpoints += 2; // 因为 32768 / 16384 = 2
+	}
+
+	// Amd 显卡 Bug：整除时，余数不为0
+	if (sdf_and_offset_index == 16384) {
+		sdf_and_offset_index = 0;
+		num_endpoints += 1;
+	}
+
+	int sdf_index = sdf_and_offset_index / int(u_info.x);
+	int offset = sdf_and_offset_index - sdf_index * int(u_info.x);
+	
+	// Amd 显卡 Bug：整除时，余数不为0；
+	if (offset == int(u_info.x)) {
+		offset = 0;
+		sdf_index += 1;
+	}
+	
+	float sdf = float(sdf_index) * u_info.z + u_info.y;
 
 	glyphy_index_t index;
 
 	index.sdf = sdf;
-	index.encode = int(value);
-	index.offset = int(offset);
-	index.num_endpoints = int(num_endpoints);
+	index.encode = v2;
+	index.offset = offset;
+	index.num_endpoints = num_endpoints;
 	
 	return index;
 }
@@ -299,6 +322,8 @@ float glyphy_sdf(const vec2 p, vec2 nominal_size, vec2 atlas_pos) {
 		vec2 n = vec2(cos(line.angle), sin(line.angle));
 		
 		side = 1.0;
+		
+		// min_dist = float(index_info.num_endpoints) / 6.0;
 		min_dist = dot(p - 0.5 * vec2(nominal_size), n) - line.distance;
 	} else {
 		glyphy_arc_t closest_arc;
@@ -363,6 +388,9 @@ float glyphy_sdf(const vec2 p, vec2 nominal_size, vec2 atlas_pos) {
 			float ext_dist = glyphy_arc_extended_dist(closest_arc, p);
 			side = sign(ext_dist);
 		}
+
+		// side = 1.0;
+		// min_dist = float(index_info.num_endpoints) / 6.0;
 	}
  
 	return min_dist * side;
@@ -442,5 +470,7 @@ void main() {
 	float alpha = antialias(sdist);
 
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
+
+	// gl_FragColor = vec4(0.0, 0.0, gsdist, 1.0);
 }
 `);
