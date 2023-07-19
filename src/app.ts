@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
     }
 
     const charSizeElement = document.getElementById('char_size') as HTMLInputElement
-    const charSizeValue = charSizeElement ? charSizeElement.value : "256";
+    const charSizeValue = charSizeElement ? charSizeElement.value : "64";
     let size = convertInputToNumber(charSizeValue);
     if (size > 0) {
         dt.set_char_size(size);
