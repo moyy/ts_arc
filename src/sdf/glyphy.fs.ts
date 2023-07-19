@@ -6,10 +6,10 @@ ProgramManager.getInstance().addShader("glyphy.fs", `
 
 precision highp float;
 
-#define GLYPHY_INFINITY 1e9
-#define GLYPHY_EPSILON  1e-5
+#define GLYPHY_INFINITY 1e6
+#define GLYPHY_EPSILON  1e-4
 #define GLYPHY_MAX_D 0.5
-#define GLYPHY_MAX_NUM_ENDPOINTS 32
+#define GLYPHY_MAX_NUM_ENDPOINTS 20
 
 uniform vec4 uColor; 
 
@@ -260,7 +260,19 @@ glyphy_index_t decode_glyphy_index(vec4 v, const vec2 nominal_size)
 		sdf_index += 1;
 	}
 	
-	float sdf = float(sdf_index) * u_info.z + u_info.y;
+	float sdf = 0.0;
+
+	if (sdf_index == 0) {
+		// 用 0 表示 完全 在内 的 晶格！
+		sdf = -GLYPHY_INFINITY;
+	} else if (sdf_index == 1) {
+		// 用 1 表示 完全 在外 的 晶格！
+		sdf = GLYPHY_INFINITY;
+	} else {
+		// 比实际的 sdf 范围多出 2
+		sdf_index -= 2;
+		sdf = float(sdf_index) * u_info.z + u_info.y;
+	}
 
 	glyphy_index_t index;
 
@@ -294,13 +306,11 @@ glyphy_index_t get_glyphy_index(const vec2 p, const vec2 nominal_size) {
 float glyphy_sdf(const vec2 p, vec2 nominal_size, vec2 atlas_pos) {
 
 	glyphy_index_t index_info = get_glyphy_index(p, nominal_size);
-	
-	float mm = u_info.w;
-	
-	if (index_info.sdf > mm) {
+		
+	if (index_info.sdf >= GLYPHY_INFINITY - GLYPHY_EPSILON) {
 		// 全外面
 		return GLYPHY_INFINITY;
-	} else if (index_info.sdf < -mm) {
+	} else if (index_info.sdf <= -GLYPHY_INFINITY + GLYPHY_EPSILON) {
 		// 全里面
 		return -GLYPHY_INFINITY;
 	}

@@ -84,11 +84,11 @@ export const closest_arcs_to_cell = (
 
 	// If d is the distance from the center of the square to the nearest arc, then
 	// all nearest arcs to the square must be at most almost [d + half_diagonal] from the center.
-	
+
 	// 最近的意思：某个半径的 圆内
 	// 放大一点点，否则 “我” 会有问题
 	let half_diagonal = 5.0 + c.sub_point(c0).len();
-	
+
 	// CHANGE_ME: 减少半径
 	let added = half_diagonal;
 	// let added = min_dist + half_diagonal + synth_max;
@@ -253,13 +253,13 @@ export const glyphy_arc_list_encode_blob2 = (
 
 				let line_key = get_line_key(near_endpoints[0], near_endpoints[1]);
 				let le = line_encode(line);
-				
+
 				let line_data = new ArcEndpoint(0.0, 0.0, 0.0);
 				line_data.line_key = line_key;
 				line_data.line_encode = le;
 
 				unit_arc.data.push(line_data);
-				
+
 				unit_arc.origin_data.push(start);
 				unit_arc.origin_data.push(end);
 
@@ -375,16 +375,19 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 				let offset = map_arc_data.offset;
 				let sdf = unit_arc.sdf;
 
-				let [encode, sdf_index] = encode_to_uint16(num_points, offset, max_offset, sdf, min_sdf, sdf_step);
-				
+				let cell_size = data.cell_size;
+				let is_interval = Math.abs(sdf) <= cell_size * Math.SQRT1_2;
+
+				let [encode, sdf_index] = encode_to_uint16(is_interval, num_points, offset, max_offset, sdf, min_sdf, sdf_step);
+
 				indiecs.push(encode);
 
 				let r = decode_from_uint16(encode, max_offset, min_sdf, sdf_step);
-				
-				if (r.num_points !== num_points || r.offset !== offset) {
-					console.error(`encode index error: min_sdf: ${min_sdf}, max_sdf: ${max_sdf}, max_offset: ${max_offset}`);
-					console.error(`encode index error: encode_to_uint16: num_points: ${num_points}, offset: ${offset}, sdf: ${sdf}, encode: ${encode}`);
-					console.error(`encode index error: decode_from_uint16: num_points: ${r.num_points}, offset: ${r.offset}, sdf: ${r.sdf}`);
+
+				if (r.num_points !== num_points || r.offset !== offset || is_interval !== r.is_interval) {
+					console.error(`encode index error: min_sdf = ${min_sdf}, max_sdf = ${max_sdf}, max_offset = ${max_offset}`);
+					console.error(`encode index error: encode_to_uint16: is_interval = ${is_interval}, num_points = ${num_points}, offset = ${offset}, sdf = ${sdf}, encode = ${encode}`);
+					console.error(`encode index error: decode_from_uint16: is_interval = ${r.is_interval}, num_points = ${r.num_points}, offset = ${r.offset}, sdf = ${r.sdf}`);
 					console.error(``);
 
 					throw new Error("encode index error")
@@ -402,7 +405,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 			}
 		}
 	}
-
+	
 	let cell_size = data.cell_size;
 	data.show += `<br> var max_offset = ${max_offset}, min_sdf = ${min_sdf.toFixed(2)}, max_sdf = ${max_sdf.toFixed(2)}, sdf_step = ${sdf_step.toFixed(2)}, cell_size = ${cell_size.toFixed(2)} <br>`;
 
@@ -443,6 +446,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 // offset + sdf: 14-bit
 // 返回 [encode, sdf_index]
 const encode_to_uint16 = (
+	is_interval: boolean, // 圆弧和晶格是否相交；
 	num_points: number,  // 只有 0，1，2，3 四个值
 
 	offset: number,      // 数据 在 数据纹理 的偏移，单位：像素，介于 [0, max_offset] 之间
@@ -455,9 +459,22 @@ const encode_to_uint16 = (
 	// 以区间的索引作为sdf的编码
 	let sdf_index = Math.floor((sdf - min_sdf) / sdf_step);
 
+	// 比实际的 sdf 范围多出 2
+	// 用 0 表示 完全 在内 的 晶格！
+	// 用 1 表示 完全 在外 的 晶格！
+	if (!is_interval) {
+		sdf_index = sdf > 0 ? 1 : 0;
+	} else {
+		sdf_index += 2;
+	}
+
 	// 将 sdf_index 和 offset 编码到一个 uint16 中
 	// 注：二维坐标 编码成 一维数字的常用做法
 	let sdf_and_offset_index = sdf_index * max_offset + offset
+
+	if (sdf_and_offset_index >= 2 ** 14) {
+		throw new Error(`Encode error, out of range !, sdf_and_offset_index = ${sdf_and_offset_index}`);
+	}
 
 	let r = (num_points << 14) | sdf_and_offset_index;
 	r = r & 0xffff;
@@ -480,9 +497,25 @@ const decode_from_uint16 = (
 	let sdf_index = Math.floor(sdf_and_offset_index / max_offset);
 	let offset = sdf_and_offset_index % max_offset;
 
-	let sdf = sdf_index * sdf_step + min_sdf;
+	let sdf = 0.0;
+	let is_interval = true;
 
-	return { num_points, sdf, offset };
+	// 比实际的 sdf 范围多出 2
+	// 用 0 表示 完全 在内 的 晶格！
+	// 用 1 表示 完全 在外 的 晶格！
+	if (sdf_index === 0) {
+		is_interval = false;
+		sdf = -GLYPHY_INFINITY;
+	} else if (sdf_index === 1) {
+		is_interval = false;
+		sdf = GLYPHY_INFINITY;
+	} else {
+		sdf_index -= 2;
+		sdf = sdf_index * sdf_step + min_sdf;
+	}
+
+
+	return { is_interval, num_points, sdf, offset };
 }
 
 const get_line_key = (ep0: ArcEndpoint, ep1: ArcEndpoint) => {
@@ -530,7 +563,7 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 	let r = [];
 
 	// console.warn(`map size = ${map.size}, before_size = ${before_size}, after_size = ${after_size}, ratio = ${after_size / before_size}`)
-	
+
 	for (let k of map.keys()) {
 		let unit_arc = map.get(k);
 		if (!unit_arc) {
@@ -538,7 +571,7 @@ const encode_data_tex = (data: BlobArc, extents: AABB, width_cells: number, heig
 		}
 
 		unit_arc.offset = r.length / 4;
-		
+
 		if (unit_arc.data.length === 1) {
 			assert(unit_arc.data[0].line_encode !== null);
 			if (unit_arc.data[0].line_encode !== null) {
@@ -681,7 +714,7 @@ const line_decode = (encoded: [number, number, number, number], nominal_size: [n
 	let angle = -ia / 0x7FFF * 3.14159265358979;
 
 	const ud = (encoded[0] - 128) * 256 + encoded[1];
-	
+
 	const id = ud - 0x4000;
 	const d = id / 0x1FFF;
 	const scale = Math.max(nominal_size[0], nominal_size[1]);

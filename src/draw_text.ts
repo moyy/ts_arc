@@ -229,7 +229,7 @@ export class DrawText {
         return this.last_blob_string;
     }
 
-    draw(font_size = 256) {
+    draw(font_size = 1000) {
         if (!this.font) {
             this.font = this.load();
         }
@@ -255,7 +255,7 @@ export class DrawText {
             let scale = font_size * window.devicePixelRatio;
             let m = mat4.create();
             mat4.identity(m);
-            mat4.translate(m, m, [100, font_size / 2, 0.0]);
+            mat4.translate(m, m, [25.0, 120.0, 0.0]);
             mat4.scale(m, m, [scale, scale, 1.0]);
             g.mesh?.material?.setWorldMatrix(m);
 
