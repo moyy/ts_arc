@@ -75,6 +75,16 @@ document.addEventListener('DOMContentLoaded', (_) => {
         }, 1);
     };
 
+    const debugElement = document.getElementById('debug') as HTMLInputElement;
+    if (debugElement) {
+        debugElement.addEventListener('change', function() {
+            const debugDiv = document.getElementById("debug_canvas");
+            if (debugDiv) {
+                debugDiv.style.display = debugElement.checked ? "block" : "none";
+            }
+        });
+    }
+
     const charElement = document.getElementById('char') as HTMLInputElement
     const charValue = charElement ? charElement.value : "A";
     dt.set_char(charValue);
