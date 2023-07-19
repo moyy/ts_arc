@@ -30,6 +30,7 @@ export class DrawText {
     ctx: CanvasRenderingContext2D;
     ttf: string;
     char: string;
+    char_size: number;
     font: Promise<opentype.Font> | null;
 
     last_arcs: BlobArc | null;
@@ -61,7 +62,9 @@ export class DrawText {
         this.ttf = ttf;
         this.ctx = ctx;
         this.font = null;
+
         this.char = "A";
+        this.char_size = 256;
 
         this.last_arcs = null;
 
@@ -123,6 +126,17 @@ export class DrawText {
 
     set_arc_endpoints(is_endpoint: boolean) {
         this.is_endpoint_arc = is_endpoint;
+    }
+
+    set_char_size(size: number) {
+        if (this.char_size !== size) {
+            delete_glyph(this.char);
+        }
+        this.char_size = size;
+
+        if (!this.font) {
+            this.font = this.load()
+        }
     }
 
     set_char(char: string) {
@@ -209,7 +223,7 @@ export class DrawText {
 
             // 在端点位置画出黑点
             ctx.beginPath();
-            
+
             console.log(`draw_network_endpoints: (${i}, ${j}): p = (${endpoint.p.x}, ${endpoint.p.y}), d = ${endpoint.d}`);
             ctx.arc(endpoint.p.x, endpoint.p.y, 20, 0, 2 * Math.PI);
             ctx.fill();
@@ -229,7 +243,7 @@ export class DrawText {
         return this.last_blob_string;
     }
 
-    draw(font_size = 1000) {
+    draw() {
         if (!this.font) {
             this.font = this.load();
         }
@@ -252,7 +266,7 @@ export class DrawText {
                 throw new Error(`g is null`);
             }
 
-            let scale = font_size * window.devicePixelRatio;
+            let scale = this.char_size * window.devicePixelRatio;
             let m = mat4.create();
             mat4.identity(m);
             mat4.translate(m, m, [25.0, 120.0, 0.0]);

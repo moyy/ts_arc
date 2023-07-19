@@ -86,6 +86,31 @@ document.addEventListener('DOMContentLoaded', (_) => {
         afterDraw();
     });
 
+    const convertInputToNumber = (inputValue: string) => {
+        if (!/^\d+$/.test(inputValue)) {
+            console.warn(`警告: 大小设置，输入不完全是数字，value = ${inputValue}`);
+            return -1;
+        }
+
+        return Number(inputValue);
+    }
+
+    const charSizeElement = document.getElementById('char_size') as HTMLInputElement
+    const charSizeValue = charSizeElement ? charSizeElement.value : "256";
+    let size = convertInputToNumber(charSizeValue);
+    if (size > 0) {
+        dt.set_char_size(size);
+    }
+    charSizeElement.addEventListener('input', function (event) {
+        let target = event.target as HTMLInputElement;
+        let size = convertInputToNumber(target.value);
+        if (size > 0) {
+            dt.set_char_size(size);
+        }
+        dt.draw();
+        afterDraw();
+    });
+
     const bezierRenderElement = document.getElementById('isBezierRender') as HTMLInputElement
     const isBezierRender = bezierRenderElement ? bezierRenderElement.checked : false;
     dt.set_render_bezier(isBezierRender);
