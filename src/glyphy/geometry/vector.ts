@@ -1,4 +1,4 @@
-import { float_equals } from "../util.js";
+import { float_equals } from "../util";
 
 export class Vector {
 

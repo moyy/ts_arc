@@ -1,5 +1,5 @@
-import { Vector } from "./vector.js";
-import { float_equals } from "../util.js";
+import { Vector } from "./vector";
+import { float_equals } from "../util";
 
 export class SignedVector extends Vector {
 

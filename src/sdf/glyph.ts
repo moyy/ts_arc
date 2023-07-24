@@ -5,12 +5,12 @@
  */
 
 import { mat4 } from "gl-matrix";
-import { TexData } from "glyphy/blob.js";
-import { GlyphyVertex } from "glyphy/vertex.js";
-import { Camera } from "./camera.js";
-import { Material } from "./material.js";
-import { Geometry, Mesh } from "./mesh.js";
-import { Program, ProgramManager } from "./program.js";
+import { TexData } from "../glyphy/blob";
+import { GlyphyVertex } from "../glyphy/vertex";
+import { Camera } from "./camera";
+import { Material } from "./material";
+import { Geometry, Mesh } from "./mesh";
+import { Program, ProgramManager } from "./program";
 
 export class Glyph {
     char: string;

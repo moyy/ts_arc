@@ -1,6 +1,6 @@
 import { mat4 } from "gl-matrix";
-import { Camera } from "./camera.js";
-import { Program } from "./program.js";
+import { Camera } from "./camera";
+import { Program } from "./program";
 
 export class Material {
     program: null | Program;

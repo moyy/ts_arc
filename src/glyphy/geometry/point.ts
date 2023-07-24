@@ -1,7 +1,7 @@
-import { Line } from "./line.js"
-import { Vector } from "./vector.js"
-import { float_equals } from "../util.js"
-import { SignedVector } from "./signed_vector.js";
+import { Line } from "./line"
+import { Vector } from "./vector"
+import { float_equals } from "../util"
+import { SignedVector } from "./signed_vector";
 
 export class Point {
     x: number;

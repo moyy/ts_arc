@@ -1,6 +1,6 @@
-import { Point } from "./geometry/point.js";
-import { Arc, ArcEndpoint } from "./geometry/arc.js";
-import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util.js";
+import { Point } from "./geometry/point";
+import { Arc, ArcEndpoint } from "./geometry/arc";
+import { GLYPHY_EPSILON, GLYPHY_INFINITY } from "./util";
 
 /**
  * SDF 算法

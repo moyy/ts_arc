@@ -153,9 +153,9 @@ export class Program {
 }
 
 Promise.resolve().then(() => {
-    import("./glyphy.vs.js");
+    import("./glyphy.vs");
 
-    import("./glyphy.fs.js");
+    import("./glyphy.fs");
 })
 
 let instance = new ProgramManager();

@@ -1,11 +1,11 @@
-import { AABB } from "./geometry/aabb.js";
-import { Arc, ArcEndpoint } from "./geometry/arc.js";
-import { glyphy_arc_list_extents } from "./geometry/arcs.js";
-import { Line } from "./geometry/line.js";
-import { Point } from "./geometry/point.js";
-import { Vector } from "./geometry/vector.js";
-import { glyphy_sdf_from_arc_list } from "./sdf.js";
-import { GLYPHY_INFINITY, assert, float_equals, is_inf } from "./util.js";
+import { AABB } from "./geometry/aabb";
+import { Arc, ArcEndpoint } from "./geometry/arc";
+import { glyphy_arc_list_extents } from "./geometry/arcs";
+import { Line } from "./geometry/line";
+import { Point } from "./geometry/point";
+import { Vector } from "./geometry/vector";
+import { glyphy_sdf_from_arc_list } from "./sdf";
+import { GLYPHY_INFINITY, assert, is_inf } from "./util";
 
 const MAX_GRID_SIZE = 63;
 

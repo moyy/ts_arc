@@ -1,6 +1,6 @@
-import { Camera } from "./camera.js";
-import { Material } from "./material.js";
-import { Program } from "./program.js";
+import { Camera } from "./camera";
+import { Material } from "./material";
+import { Program } from "./program";
 
 let lastUseGeometry: null | Geometry = null;
 

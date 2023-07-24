@@ -1,6 +1,6 @@
-import { Camera } from "./camera.js";
-import { get_glyph } from "./glyph.js";
-import { ProgramManager } from "./program.js";
+import { Camera } from "./camera";
+import { get_glyph } from "./glyph";
+import { ProgramManager } from "./program";
 
 export class SdfContext {
     char: string;

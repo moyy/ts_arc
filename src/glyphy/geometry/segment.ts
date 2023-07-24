@@ -1,7 +1,7 @@
-import { Point } from "./point.js";
-import { Line } from "./line.js";
-import { Arc } from "./arc.js";
-import { SignedVector } from "./signed_vector.js";
+import { Point } from "./point";
+import { Line } from "./line";
+import { Arc } from "./arc";
+import { SignedVector } from "./signed_vector";
 
 export class Segment {
     p0: Point;

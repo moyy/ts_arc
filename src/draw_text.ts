@@ -1,11 +1,12 @@
 import { mat4 } from 'gl-matrix';
-import { BlobArc } from 'glyphy/blob.js';
-import { ArcEndpoint } from 'glyphy/geometry/arc.js';
-import { GLYPHY_INFINITY } from 'glyphy/util';
-import { add_glyph_vertices, GlyphInfo } from 'glyphy/vertex.js';
-import { get_char_arc, to_arc_cmds } from 'glyphy_draw.js';
 import * as opentype from 'opentype.js';
-import { delete_glyph, set_glyph } from 'sdf/glyph.js';
+
+import { BlobArc } from './glyphy/blob';
+import { ArcEndpoint } from './glyphy/geometry/arc';
+import { GLYPHY_INFINITY } from './glyphy/util';
+import { add_glyph_vertices, GlyphInfo } from './glyphy/vertex';
+import { get_char_arc, to_arc_cmds } from './glyphy_draw';
+import { delete_glyph, set_glyph } from './sdf/glyph';
 
 /**
  * + 填充规则：奇偶规则
@@ -444,7 +445,7 @@ export class DrawText {
 
     async load() {
         return new Promise<opentype.Font>((resolve, reject) => {
-            opentype.load(this.ttf, (err: Error | undefined, font: opentype.Font | undefined) => {
+            opentype.load(`font/${this.ttf}`, (err: Error | undefined, font: opentype.Font | undefined) => {
                 if (err || !font) {
                     reject(err || new Error('Font could not be loaded.'));
                 } else {

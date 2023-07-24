@@ -1,5 +1,5 @@
-import { GLYPHY_INFINITY } from "../util.js";
-import { Point } from "./point.js";
+import { GLYPHY_INFINITY } from "../util";
+import { Point } from "./point";
 
 // 包围盒
 export class AABB {

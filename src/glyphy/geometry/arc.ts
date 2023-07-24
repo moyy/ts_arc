@@ -1,12 +1,12 @@
-import { Point } from "./point.js";
-import { Vector } from "./vector.js";
-import { float_equals, xor } from "../util.js"
-import { Segment } from "./segment.js";
-import { SignedVector } from "./signed_vector.js";
-import { Pair } from "./pair.js";
-import { Bezier } from "./bezier.js";
-import { Line } from "./line.js";
-import { AABB } from "./aabb.js";
+import { Point } from "./point";
+import { Vector } from "./vector";
+import { float_equals, xor } from "../util"
+import { Segment } from "./segment";
+import { SignedVector } from "./signed_vector";
+import { Pair } from "./pair";
+import { Bezier } from "./bezier";
+import { Line } from "./line";
+import { AABB } from "./aabb";
 
 // sin( 2 * atan(d) )
 export const sin2atan = (d: number) => {

@@ -4,7 +4,6 @@ export const GLYPHY_EPSILON = 1e-4;
 // 浮点数：无穷
 export const GLYPHY_INFINITY = Infinity;
 
-// TODO
 export const GLYPHY_MAX_D = 0.5;
 
 /**

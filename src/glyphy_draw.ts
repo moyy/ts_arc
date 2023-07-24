@@ -1,12 +1,13 @@
-import { BlobArc, glyphy_arc_list_encode_blob2 } from "glyphy/blob.js";
-import { AABB } from "glyphy/geometry/aabb.js";
-import { Arc, ArcEndpoint } from "glyphy/geometry/arc.js";
-import { GlyphyArcAccumulator } from "glyphy/geometry/arcs";
-import { Point } from "glyphy/geometry/point.js";
-import { glyphy_outline_winding_from_even_odd } from "glyphy/outline.js";
-import { GLYPHY_INFINITY, assert } from "glyphy/util.js";
-import { GlyphInfo } from "glyphy/vertex.js";
 import * as opentype from "opentype.js";
+
+import { BlobArc, glyphy_arc_list_encode_blob2 } from "./glyphy/blob";
+import { AABB } from "./glyphy/geometry/aabb";
+import { Arc, ArcEndpoint } from "./glyphy/geometry/arc";
+import { GlyphyArcAccumulator } from "./glyphy/geometry/arcs";
+import { Point } from "./glyphy/geometry/point";
+import { glyphy_outline_winding_from_even_odd } from "./glyphy/outline";
+import { GLYPHY_INFINITY, assert } from "./glyphy/util";
+import { GlyphInfo } from "./glyphy/vertex";
 
 const MIN_FONT_SIZE = 10;
 

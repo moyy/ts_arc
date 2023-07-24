@@ -1,9 +1,9 @@
 # 圆弧
 
-+ 每次改完，运行 npm run build
-+ 随便一个 web服务器都可以
-    - npm -g i http-server
-    - 运行 http-server
++ 安装 npm i
++ 运行 npm run start 启动 开发服务器
+    - http://localhost:1234 查看，支持 热更；
++ 如 出错，将 font/*.ttf 拷贝到 dist/font/*.ttf
 
 ## 1. Arc 类
 

@@ -1,6 +1,6 @@
-import { Arc, ArcEndpoint } from "./geometry/arc.js";
-import { Point } from "./geometry/point.js";
-import { GLYPHY_EPSILON, GLYPHY_INFINITY, xor } from "./util.js";
+import { Arc, ArcEndpoint } from "./geometry/arc";
+import { Point } from "./geometry/point";
+import { GLYPHY_EPSILON, GLYPHY_INFINITY, xor } from "./util";
 
 const glyphy_outline_reverse = (endpoints: ArcEndpoint[]) => {
     let num_endpoints = endpoints.length;

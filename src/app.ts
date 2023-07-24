@@ -1,6 +1,6 @@
-import { SdfContext } from "sdf/draw_sdf.js";
-import { set_gl } from "sdf/glyph.js";
-import { DrawText } from "./draw_text.js"
+import { SdfContext } from "./sdf/draw_sdf";
+import { set_gl } from "./sdf/glyph";
+import { DrawText } from "./draw_text"
 
 document.addEventListener('DOMContentLoaded', (_) => {
     if (document === null) {
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', (_) => {
         }
     }
 
-    let dt = new DrawText(fontContext, "font/msyh.ttf");
+    let dt = new DrawText(fontContext, "msyh.ttf");
 
     const afterDraw = () => {
         setTimeout(() => {

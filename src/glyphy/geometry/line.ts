@@ -1,7 +1,7 @@
-import { GLYPHY_INFINITY, float_equals } from "../util.js";
-import { Point } from "./point.js";
-import { Vector } from "./vector.js";
-import { SignedVector } from "./signed_vector.js";
+import { GLYPHY_INFINITY, float_equals } from "../util";
+import { Point } from "./point";
+import { Vector } from "./vector";
+import { SignedVector } from "./signed_vector";
 
 export class Line {
 

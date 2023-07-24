@@ -3,12 +3,12 @@
  * Approximate outlines with multiple arcs
  */
 
-import { GLYPHY_INFINITY, GLYPHY_MAX_D, is_zero } from "glyphy/util.js";
-import { Arc, ArcEndpoint } from "./arc.js";
-import { Point } from "./point.js"
-import { AABB } from "./aabb.js";
-import { Bezier } from "./bezier.js";
-import { ArcBezierApproximatorQuantized, ArcBezierApproximatorQuantizedDefault, ArcBezierErrorApproximatorDefault } from "../arc_bezier.js"
+import { GLYPHY_INFINITY, GLYPHY_MAX_D, is_zero } from "../util";
+import { Arc, ArcEndpoint } from "./arc";
+import { Point } from "./point"
+import { AABB } from "./aabb";
+import { Bezier } from "./bezier";
+import { ArcBezierApproximatorQuantized, ArcBezierApproximatorQuantizedDefault, ArcBezierErrorApproximatorDefault } from "../arc_bezier"
 
 export class GlyphyArcAccumulator {
     result: ArcEndpoint[];

@@ -1,6 +1,6 @@
-import { Pair } from "./pair.js";
-import { Vector } from "./vector.js"
-import { Point } from "./point.js";
+import { Pair } from "./pair";
+import { Vector } from "./vector"
+import { Point } from "./point";
 
 // 3次 贝塞尔曲线
 export class Bezier {

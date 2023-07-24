@@ -1,4 +1,4 @@
-import { ProgramManager } from "./program.js";
+import { ProgramManager } from "./program";
 
 ProgramManager.getInstance().addShader("glyphy.vs", `
     

@@ -1,7 +1,7 @@
-import { Arc, ErrorValue, tan2atan } from "./geometry/arc.js";
-import { Bezier } from "./geometry/bezier.js";
-import { Vector } from "./geometry/vector.js";
-import { GLYPHY_INFINITY, assert } from "./util.js";
+import { Arc, ErrorValue, tan2atan } from "./geometry/arc";
+import { Bezier } from "./geometry/bezier";
+import { Vector } from "./geometry/vector";
+import { GLYPHY_INFINITY, assert } from "./util";
 
 
 /* Returns 3 max(abs(d₀ t (1-t)² + d₁ t² (1-t)) for 0≤t≤1. */
