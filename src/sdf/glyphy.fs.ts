@@ -307,13 +307,13 @@ float glyphy_sdf(const vec2 p, vec2 nominal_size, vec2 atlas_pos) {
 
 	glyphy_index_t index_info = get_glyphy_index(p, nominal_size);
 		
-	if (index_info.sdf >= GLYPHY_INFINITY - GLYPHY_EPSILON) {
-		// 全外面
-		return GLYPHY_INFINITY;
-	} else if (index_info.sdf <= -GLYPHY_INFINITY + GLYPHY_EPSILON) {
-		// 全里面
-		return -GLYPHY_INFINITY;
-	}
+	// if (index_info.sdf >= GLYPHY_INFINITY - GLYPHY_EPSILON) {
+	// 	// 全外面
+	// 	return GLYPHY_INFINITY;
+	// } else if (index_info.sdf <= -GLYPHY_INFINITY + GLYPHY_EPSILON) {
+	// 	// 全里面
+	// 	return -GLYPHY_INFINITY;
+	// }
 
 	// 处理相交的晶格
 
@@ -455,7 +455,8 @@ glyph_info_t glyph_info_decode(vec2 v) {
 // 抗锯齿 1像素 
 // d 在 [a, b] 返回 [0.0, 1.0] 
 float antialias(float d) {
-	float b = 0.5;
+	// TODO 这个值，文字越少，就应该越少。否则 就会出现 模糊；
+	float b = 0.3;
 	float a = -b;
 
 	float r = (-d - a) / (b - a);
@@ -481,6 +482,15 @@ void main() {
 
 	gl_FragColor = uColor * vec4(uColor.rgb, alpha * uColor.a);
 
-	// gl_FragColor = vec4(0.0, 0.0, gsdist, 1.0);
+	// 画 网格
+
+	// float w = 0.03;
+	// gl_FragColor = vec4(alpha, 0.0, 0.0, 1.0);
+	// if (fract(p.x) < w || fract(p.x) > 1.0 - w) {
+	// 	gl_FragColor.g = 1.0;
+	// }
+	// if (fract(p.y) < w || fract(p.y) > 1.0 - w) {
+	// 	gl_FragColor.b = 1.0;
+	// }
 }
 `);

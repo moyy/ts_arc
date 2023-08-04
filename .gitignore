@@ -1,5 +1,8 @@
-node_modules
-
 *-lock.json
 
 dist
+node_modules
+
+.vscode
+.parcel-cache
+

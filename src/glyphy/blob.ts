@@ -63,6 +63,7 @@ export const closest_arcs_to_cell = (
 
 	// 改字体 所有的 圆弧
 	endpoints: ArcEndpoint[],
+	loop_start_indies: number[],
 
 	// 输出参数
 	near_endpoints: ArcEndpoint[],
@@ -76,20 +77,15 @@ export const closest_arcs_to_cell = (
 	// cell 的 中心
 	let c = c0.midpoint(c1);
 	// 所有的 圆弧到 中心 的 距离
-	let [min_dist, effect_endpoints] = glyphy_sdf_from_arc_list(endpoints, c);
+	let [min_dist, start_index] = glyphy_sdf_from_arc_list(endpoints, c);
 
 	let side = min_dist >= 0 ? +1 : -1;
 	min_dist = Math.abs(min_dist);
 	let near_arcs: Arc[] = [];
 
-	// If d is the distance from the center of the square to the nearest arc, then
-	// all nearest arcs to the square must be at most almost [d + half_diagonal] from the center.
-
 	// 最近的意思：某个半径的 圆内
-	// 放大一点点，否则 “我” 会有问题
-	let half_diagonal = 5.0 + c.sub_point(c0).len();
+	let half_diagonal = c.sub_point(c0).len();
 
-	// CHANGE_ME: 减少半径
 	let added = half_diagonal;
 	// let added = min_dist + half_diagonal + synth_max;
 
@@ -126,7 +122,158 @@ export const closest_arcs_to_cell = (
 		p1 = arc.p1;
 	}
 
+	// 全外 或者 全内 时
+	let effect_endpoints: ArcEndpoint[] = [];
+	if (near_arcs.length === 0) {
+		let [loop_start, loop_end] = get_loop_idnex(start_index, loop_start_indies);
+		effect_endpoints = choose_best_arcs(start_index, loop_start, loop_end, endpoints, side, c0, c1);
+	}
+
 	return [side * min_dist, effect_endpoints];
+}
+
+// 取 index 所在的 循环的 起始和结束索引
+// loop_start_indies 的 第一个 元素 肯定是 0
+// loop_start_indies 的 最后一个 元素 是用于 回环的 哨兵
+const get_loop_idnex = (index: number, loop_start_indies: number[]): [number, number] => {
+	if (loop_start_indies[0] !== 0) {
+		throw new Error(`loop_start_indies[0] !== 0, loop_start_indies[0] = ${loop_start_indies[0]}`);
+	}
+
+	if (index < 0 || index >= loop_start_indies[loop_start_indies.length - 1]) {
+		throw new Error(`index < 0 || index >= loop_start_indies[loop_start_indies.length - 1], index = ${index}, loop_start_indies[loop_start_indies.length - 1] = ${loop_start_indies[loop_start_indies.length - 1]}`);
+	}
+
+	for (let i = 0; i < loop_start_indies.length; ++i) {
+		let curr = loop_start_indies[i];
+		if (curr > index) {
+			let prev = loop_start_indies[i - 1];
+
+			curr -= 1;
+			return [prev, curr];
+		}
+	}
+
+	throw new Error(`get_loop_idnex error, no reach: index = ${index}, loop_start_indies = ${loop_start_indies}`);
+}
+
+// 选择 最佳的 圆弧
+// sart_index 在 [loop_start, loop_end] 标注 的 环上
+const choose_best_arcs = (
+	start_index: number,
+	loop_start: number, loop_end: number,
+	endpoints: ArcEndpoint[], sdf_sign: number, cp0: Point, cp1: Point) => {
+	let index = get_curr_index(start_index, loop_start, loop_end);
+	let [same_count, arcs] = is_best_arcs(index, loop_start, loop_end, 2, endpoints, sdf_sign, cp0, cp1);
+	if (same_count === 4) {
+		return arcs;
+	}
+
+	index = get_prev_index(start_index, loop_start, loop_end);
+	let [same_count2, arcs2] = is_best_arcs(index, loop_start, loop_end, 2, endpoints, sdf_sign, cp0, cp1);
+	if (same_count2 === 4) {
+		return arcs2;
+	}
+
+	index = get_next_index(start_index, loop_start, loop_end);
+	let [same_count3, arcs3] = is_best_arcs(index, loop_start, loop_end, 2, endpoints, sdf_sign, cp0, cp1);
+	if (same_count3 === 4) {
+		return arcs3;
+	}
+
+	index = get_curr_index(start_index, loop_start, loop_end);
+	let [same_count4, arcs4] = is_best_arcs(index, loop_start, loop_end, 3, endpoints, sdf_sign, cp0, cp1);
+	if (same_count4 === 4) {
+		return arcs4;
+	}
+
+	index = get_prev_index(start_index, loop_start, loop_end);
+	let [same_count5, arcs5] = is_best_arcs(index, loop_start, loop_end, 3, endpoints, sdf_sign, cp0, cp1);
+	if (same_count5 === 4) {
+		return arcs5;
+	}
+
+	let new_arcs = [];
+	for (let i of arcs) {
+		new_arcs.push(i.clone());
+	}
+	let msg = `choose_best_arcs error: start_index = ${start_index}, sdf_sign = ${sdf_sign}, cp0 = (${cp0.x}, ${cp0.y}), cp1 = (${cp1.x}, ${cp1.y}), arcs = `;
+
+	console.error(msg, new_arcs, ", all endpoints = ", endpoints);
+	// throw new Error(msg);
+
+	return arcs;
+}
+
+// 选择 最佳的 圆弧
+const is_best_arcs = (
+	index: number,
+	loop_start: number, loop_end: number,
+	num: number,
+	endpoints: ArcEndpoint[], sdf_sign: number, cp0: Point, cp1: Point): [number, ArcEndpoint[]] => {
+
+	let r = [];
+
+	for (let i = 0; i < num; i++) {
+		let endpoint = endpoints[index];
+		r.push(new ArcEndpoint(endpoint.p.x, endpoint.p.y, endpoint.d));
+		index = get_next_index(index, loop_start, loop_end);
+	}
+
+	r[0].d = GLYPHY_INFINITY;
+	let same_count = is_quad_same_sign(cp0, cp1, r, sdf_sign);
+	return [same_count, r];
+}
+
+const get_curr_index = (index: number, loop_start: number, loop_end: number): number => {
+	return index;
+}
+
+// 沿着环 [loop_start, loop_end] 找 index的 下一个索引
+const get_next_index = (index: number, loop_start: number, loop_end: number): number => {
+	// index must in [loop_start, loop_end]
+	if (index < loop_start || index > loop_end) {
+		throw new Error(`get_next_index error: index = ${index}, loop_start = ${loop_start}, loop_end = ${loop_end}`);
+	}
+
+	index += 1;
+	if (index > loop_end) {
+		index = loop_start + 1;
+	}
+	return index;
+}
+
+// 沿着环 [loop_start, loop_end] 找 index 的 上一个索引
+const get_prev_index = (index: number, loop_start: number, loop_end: number): number => {
+	// index must in [loop_start, loop_end]
+	if (index < loop_start || index > loop_end) {
+		throw new Error(`get_next_index error: index = ${index}, loop_start = ${loop_start}, loop_end = ${loop_end}`);
+	}
+
+	index -= 1;
+	if (index < loop_start) {
+		index = loop_end - 1;
+	}
+	return index;
+}
+
+// 正方形的四个角落是否 全部 在 给定圆弧的 外面/里面
+// 返回有几个点的 符号 和 sdf_sign 相同
+const is_quad_same_sign = (cp0: Point, cp1: Point, endpoints: ArcEndpoint[], sdf_sign: number): number => {
+	let i = 0;
+	for (let p of [cp0, new Point(cp0.x, cp1.y), new Point(cp1.x, cp0.y), cp1]) {
+		if (is_point_same_sign(p, endpoints, sdf_sign)) {
+			i++;
+		}
+	}
+	return i;
+}
+
+// 验证 sdf 四个角落 的点 是否和 给定的sdf 符号相同
+const is_point_same_sign = (point: Point, endpoints: ArcEndpoint[], sdf_sign: number): boolean => {
+	let [min_dist, _] = glyphy_sdf_from_arc_list(endpoints, point);
+
+	return Math.sign(min_dist) === sdf_sign;
 }
 
 export const glyphy_arc_list_encode_blob2 = (
@@ -138,6 +285,16 @@ export const glyphy_arc_list_encode_blob2 = (
 	pextents: AABB): BlobArc => {
 
 	let extents = new AABB();
+
+	let loop_start_indies: number[] = [];
+	for (let i = 0; i < endpoints.length; i++) {
+		let ep = endpoints[i];
+		if (ep.d === GLYPHY_INFINITY) {
+			loop_start_indies.push(i);
+		}
+	}
+	// 最后一个是用于 回环的 哨兵
+	loop_start_indies.push(endpoints.length);
 
 	glyphy_arc_list_extents(endpoints, extents);
 
@@ -222,6 +379,7 @@ export const glyphy_arc_list_encode_blob2 = (
 				enlighten_max,
 				embolden_max,
 				endpoints,
+				loop_start_indies,
 				near_endpoints
 			);
 			unit_arc.sdf = sdf;
@@ -405,7 +563,7 @@ const encode_to_tex = (data: BlobArc, extents: AABB,
 			}
 		}
 	}
-	
+
 	let cell_size = data.cell_size;
 	data.show += `<br> var max_offset = ${max_offset}, min_sdf = ${min_sdf.toFixed(2)}, max_sdf = ${max_sdf.toFixed(2)}, sdf_step = ${sdf_step.toFixed(2)}, cell_size = ${cell_size.toFixed(2)} <br>`;
 
